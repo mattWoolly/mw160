@@ -26,6 +26,7 @@ FetchContent_MakeAvailable(JUCE Catch2)
 # ---------- DSP library (pure C++, no JUCE dependency) ----------
 add_library(MW160_DSP STATIC
     src/dsp/Compressor.cpp
+    src/dsp/RmsDetector.cpp
 )
 target_include_directories(MW160_DSP PUBLIC src)
 
@@ -74,6 +75,7 @@ enable_testing()
 
 add_executable(MW160Tests
     tests/test_smoke.cpp
+    tests/test_rms_detector.cpp
 )
 
 target_link_libraries(MW160Tests
