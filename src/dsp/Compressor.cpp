@@ -44,30 +44,39 @@ void Compressor::setOverEasy(bool enabled)
 
 float Compressor::processSample(float input)
 {
+    const float rmsLinear = detector_.processSample(input);
+    return applyCompression(input, rmsLinear);
+}
+
+float Compressor::processSampleLinked(float input, double detectorInputSquared)
+{
+    const float rmsLinear = detector_.processSampleFromSquared(detectorInputSquared);
+    return applyCompression(input, rmsLinear);
+}
+
+float Compressor::applyCompression(float input, float rmsLinear)
+{
     // Read smoothed parameter values (one step per sample)
     const float threshold_dB = thresholdSmoother_.getNextValue();
     const float ratio        = ratioSmoother_.getNextValue();
     const float outputGain   = outputGainSmoother_.getNextValue();
 
-    // 1. Detect RMS level (linear)
-    const float rmsLinear = detector_.processSample(input);
-
-    // 2. Convert to dB (floor at -100 dB for silence)
+    // Convert to dB (floor at -100 dB for silence)
     const float rms_dB = (rmsLinear > 0.0f)
                              ? 20.0f * std::log10(rmsLinear)
                              : kSilenceFloor_dB;
 
-    // 3. Compute instantaneous gain reduction
+    // Compute instantaneous gain reduction
     const float kneeWidth = overEasy_ ? kOverEasyKneeWidth_dB : 0.0f;
     const float targetGR_dB = gainComputer_.computeGainReduction(rms_dB, threshold_dB, ratio, kneeWidth);
 
-    // 4. Smooth through ballistics envelope
+    // Smooth through ballistics envelope
     const float smoothedGR_dB = ballistics_.processSample(targetGR_dB);
 
-    // 5. Convert gain reduction to linear gain
+    // Convert gain reduction to linear gain
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);
 
-    // 6. Apply gain reduction and output gain
+    // Apply gain reduction and output gain
     return input * gain * outputGain;
 }
 
