@@ -6,6 +6,9 @@ MW160Processor::MW160Processor()
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
+    thresholdParam_ = apvts.getRawParameterValue("threshold");
+    ratioParam_ = apvts.getRawParameterValue("ratio");
+    outputGainParam_ = apvts.getRawParameterValue("outputGain");
 }
 
 MW160Processor::~MW160Processor() = default;
@@ -67,8 +70,13 @@ void MW160Processor::setCurrentProgram(int) {}
 const juce::String MW160Processor::getProgramName(int) { return {}; }
 void MW160Processor::changeProgramName(int, const juce::String&) {}
 
-void MW160Processor::prepareToPlay(double /*sampleRate*/, int /*samplesPerBlock*/)
+void MW160Processor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
+    for (int ch = 0; ch < kMaxChannels; ++ch)
+    {
+        compressor_[ch].prepare(sampleRate, samplesPerBlock);
+        compressor_[ch].reset();
+    }
 }
 
 void MW160Processor::releaseResources()
@@ -92,10 +100,30 @@ bool MW160Processor::isBusesLayoutSupported(const BusesLayout& layouts) const
     return true;
 }
 
-void MW160Processor::processBlock(juce::AudioBuffer<float>& /*buffer*/,
+void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
                                   juce::MidiBuffer& /*midiMessages*/)
 {
-    // Unity gain passthrough — audio buffer is left unmodified
+    juce::ScopedNoDenormals noDenormals;
+
+    const int numChannels = buffer.getNumChannels();
+    const int numSamples = buffer.getNumSamples();
+
+    // Read parameters once per block
+    const float threshold = thresholdParam_->load();
+    const float ratio = ratioParam_->load();
+    const float outputGain = outputGainParam_->load();
+
+    for (int ch = 0; ch < numChannels; ++ch)
+    {
+        compressor_[ch].setThreshold(threshold);
+        compressor_[ch].setRatio(ratio);
+        compressor_[ch].setOutputGain(outputGain);
+
+        float* channelData = buffer.getWritePointer(ch);
+
+        for (int i = 0; i < numSamples; ++i)
+            channelData[i] = compressor_[ch].processSample(channelData[i]);
+    }
 }
 
 juce::AudioProcessorEditor* MW160Processor::createEditor()
