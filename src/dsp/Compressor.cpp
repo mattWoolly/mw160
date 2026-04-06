@@ -6,6 +6,14 @@ void Compressor::prepare(double sampleRate, int /*maxBlockSize*/)
 {
     detector_.prepare(sampleRate);
     ballistics_.prepare(sampleRate);
+
+    thresholdSmoother_.reset(sampleRate, kSmoothingTime_s);
+    ratioSmoother_.reset(sampleRate, kSmoothingTime_s);
+    outputGainSmoother_.reset(sampleRate, kSmoothingTime_s);
+
+    thresholdSmoother_.setCurrentAndTarget(0.0f);
+    ratioSmoother_.setCurrentAndTarget(1.0f);
+    outputGainSmoother_.setCurrentAndTarget(1.0f);  // 0 dB = linear 1.0
 }
 
 void Compressor::reset()
@@ -16,21 +24,26 @@ void Compressor::reset()
 
 void Compressor::setThreshold(float threshold_dB)
 {
-    threshold_dB_ = threshold_dB;
+    thresholdSmoother_.setTarget(threshold_dB);
 }
 
 void Compressor::setRatio(float ratio)
 {
-    ratio_ = ratio;
+    ratioSmoother_.setTarget(ratio);
 }
 
 void Compressor::setOutputGain(float gain_dB)
 {
-    outputGain_linear_ = std::pow(10.0f, gain_dB / 20.0f);
+    outputGainSmoother_.setTarget(std::pow(10.0f, gain_dB / 20.0f));
 }
 
 float Compressor::processSample(float input)
 {
+    // Read smoothed parameter values (one step per sample)
+    const float threshold_dB = thresholdSmoother_.getNextValue();
+    const float ratio        = ratioSmoother_.getNextValue();
+    const float outputGain   = outputGainSmoother_.getNextValue();
+
     // 1. Detect RMS level (linear)
     const float rmsLinear = detector_.processSample(input);
 
@@ -40,7 +53,7 @@ float Compressor::processSample(float input)
                              : kSilenceFloor_dB;
 
     // 3. Compute instantaneous gain reduction
-    const float targetGR_dB = gainComputer_.computeGainReduction(rms_dB, threshold_dB_, ratio_);
+    const float targetGR_dB = gainComputer_.computeGainReduction(rms_dB, threshold_dB, ratio);
 
     // 4. Smooth through ballistics envelope
     const float smoothedGR_dB = ballistics_.processSample(targetGR_dB);
@@ -49,7 +62,7 @@ float Compressor::processSample(float input)
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);
 
     // 6. Apply gain reduction and output gain
-    return input * gain * outputGain_linear_;
+    return input * gain * outputGain;
 }
 
 } // namespace mw160
