@@ -11,6 +11,7 @@ MW160Processor::MW160Processor()
     outputGainParam_ = apvts.getRawParameterValue("outputGain");
     overEasyParam_ = apvts.getRawParameterValue("overEasy");
     stereoLinkParam_ = apvts.getRawParameterValue("stereoLink");
+    mixParam_ = apvts.getRawParameterValue("mix");
 }
 
 MW160Processor::~MW160Processor() = default;
@@ -116,6 +117,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
     const float outputGain = outputGainParam_->load();
     const bool overEasy = overEasyParam_->load() >= 0.5f;
     const bool stereoLink = stereoLinkParam_->load() >= 0.5f;
+    const float mix = mixParam_->load();
 
     for (int ch = 0; ch < numChannels; ++ch)
     {
@@ -123,6 +125,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
         compressor_[ch].setRatio(ratio);
         compressor_[ch].setOutputGain(outputGain);
         compressor_[ch].setOverEasy(overEasy);
+        compressor_[ch].setMix(mix);
     }
 
     if (stereoLink && numChannels == 2)

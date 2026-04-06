@@ -31,6 +31,9 @@ public:
     /// Enable or disable OverEasy (soft knee) mode.
     void setOverEasy(bool enabled);
 
+    /// Set the dry/wet mix (0–100%). 100% = fully compressed, 0% = dry.
+    void setMix(float mixPercent);
+
     /// Process a single sample through the full compression pipeline.
     float processSample(float input);
 
@@ -49,6 +52,7 @@ private:
     ParameterSmoother<SmoothingType::Linear>         thresholdSmoother_;
     ParameterSmoother<SmoothingType::Linear>         ratioSmoother_;
     ParameterSmoother<SmoothingType::Multiplicative>  outputGainSmoother_;
+    ParameterSmoother<SmoothingType::Linear>         mixSmoother_;
 
     bool overEasy_ = false;
 
