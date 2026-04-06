@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "dsp/Compressor.h"
 
 class MW160Processor : public juce::AudioProcessor
 {
@@ -40,5 +41,12 @@ public:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
 private:
+    static constexpr int kMaxChannels = 2;
+    mw160::Compressor compressor_[kMaxChannels];
+
+    std::atomic<float>* thresholdParam_ = nullptr;
+    std::atomic<float>* ratioParam_ = nullptr;
+    std::atomic<float>* outputGainParam_ = nullptr;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MW160Processor)
 };

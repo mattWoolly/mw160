@@ -78,6 +78,7 @@ enable_testing()
 add_executable(MW160Tests
     tests/test_smoke.cpp
     tests/test_ballistics.cpp
+    tests/test_compressor_integration.cpp
     tests/test_gain_computer.cpp
     tests/test_rms_detector.cpp
 )
