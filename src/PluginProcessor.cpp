@@ -1,14 +1,59 @@
 #include "PluginProcessor.h"
-#include "PluginEditor.h"
 
 MW160Processor::MW160Processor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
-                         .withOutput("Output", juce::AudioChannelSet::stereo(), true))
+                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
+      apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
 }
 
 MW160Processor::~MW160Processor() = default;
+
+juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"threshold", 1},
+        "Threshold",
+        juce::NormalisableRange<float>(-40.0f, 20.0f, 0.1f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("dBu")));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"ratio", 1},
+        "Compression",
+        juce::NormalisableRange<float>(1.0f, 60.0f, 0.1f),
+        1.0f,
+        juce::AudioParameterFloatAttributes().withLabel(":1")));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"outputGain", 1},
+        "Output Gain",
+        juce::NormalisableRange<float>(-20.0f, 20.0f, 0.1f),
+        0.0f,
+        juce::AudioParameterFloatAttributes().withLabel("dB")));
+
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID{"overEasy", 1},
+        "OverEasy",
+        false));
+
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID{"stereoLink", 1},
+        "Stereo Link",
+        true));
+
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID{"mix", 1},
+        "Mix",
+        juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f),
+        100.0f,
+        juce::AudioParameterFloatAttributes().withLabel("%")));
+
+    return layout;
+}
 
 const juce::String MW160Processor::getName() const { return JucePlugin_Name; }
 bool MW160Processor::acceptsMidi() const { return false; }
@@ -55,17 +100,23 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& /*buffer*/,
 
 juce::AudioProcessorEditor* MW160Processor::createEditor()
 {
-    return new MW160Editor(*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 bool MW160Processor::hasEditor() const { return true; }
 
-void MW160Processor::getStateInformation(juce::MemoryBlock& /*destData*/)
+void MW160Processor::getStateInformation(juce::MemoryBlock& destData)
 {
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    copyXmlToBinary(*xml, destData);
 }
 
-void MW160Processor::setStateInformation(const void* /*data*/, int /*sizeInBytes*/)
+void MW160Processor::setStateInformation(const void* data, int sizeInBytes)
 {
+    std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
+    if (xml != nullptr && xml->hasTagName(apvts.state.getType()))
+        apvts.replaceState(juce::ValueTree::fromXml(*xml));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
