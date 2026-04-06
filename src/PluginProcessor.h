@@ -47,6 +47,7 @@ private:
     std::atomic<float>* thresholdParam_ = nullptr;
     std::atomic<float>* ratioParam_ = nullptr;
     std::atomic<float>* outputGainParam_ = nullptr;
+    std::atomic<float>* overEasyParam_ = nullptr;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MW160Processor)
 };
