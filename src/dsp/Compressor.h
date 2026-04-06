@@ -3,6 +3,7 @@
 #include "RmsDetector.h"
 #include "GainComputer.h"
 #include "Ballistics.h"
+#include "ParameterSmoother.h"
 
 #include <cmath>
 
@@ -35,11 +36,12 @@ private:
     GainComputer gainComputer_;
     Ballistics ballistics_;
 
-    float threshold_dB_ = 0.0f;
-    float ratio_ = 1.0f;
-    float outputGain_linear_ = 1.0f;
+    ParameterSmoother<SmoothingType::Linear>         thresholdSmoother_;
+    ParameterSmoother<SmoothingType::Linear>         ratioSmoother_;
+    ParameterSmoother<SmoothingType::Multiplicative>  outputGainSmoother_;
 
     static constexpr float kSilenceFloor_dB = -100.0f;
+    static constexpr double kSmoothingTime_s = 0.020;  // 20 ms
 };
 
 } // namespace mw160
