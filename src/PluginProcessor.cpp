@@ -10,6 +10,7 @@ MW160Processor::MW160Processor()
     ratioParam_ = apvts.getRawParameterValue("ratio");
     outputGainParam_ = apvts.getRawParameterValue("outputGain");
     overEasyParam_ = apvts.getRawParameterValue("overEasy");
+    stereoLinkParam_ = apvts.getRawParameterValue("stereoLink");
 }
 
 MW160Processor::~MW160Processor() = default;
@@ -114,6 +115,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
     const float ratio = ratioParam_->load();
     const float outputGain = outputGainParam_->load();
     const bool overEasy = overEasyParam_->load() >= 0.5f;
+    const bool stereoLink = stereoLinkParam_->load() >= 0.5f;
 
     for (int ch = 0; ch < numChannels; ++ch)
     {
@@ -121,11 +123,32 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
         compressor_[ch].setRatio(ratio);
         compressor_[ch].setOutputGain(outputGain);
         compressor_[ch].setOverEasy(overEasy);
+    }
 
-        float* channelData = buffer.getWritePointer(ch);
+    if (stereoLink && numChannels == 2)
+    {
+        float* dataL = buffer.getWritePointer(0);
+        float* dataR = buffer.getWritePointer(1);
 
         for (int i = 0; i < numSamples; ++i)
-            channelData[i] = compressor_[ch].processSample(channelData[i]);
+        {
+            const double sqL = static_cast<double>(dataL[i]) * static_cast<double>(dataL[i]);
+            const double sqR = static_cast<double>(dataR[i]) * static_cast<double>(dataR[i]);
+            const double linkedSquared = (sqL + sqR) * 0.5;
+
+            dataL[i] = compressor_[0].processSampleLinked(dataL[i], linkedSquared);
+            dataR[i] = compressor_[1].processSampleLinked(dataR[i], linkedSquared);
+        }
+    }
+    else
+    {
+        for (int ch = 0; ch < numChannels; ++ch)
+        {
+            float* channelData = buffer.getWritePointer(ch);
+
+            for (int i = 0; i < numSamples; ++i)
+                channelData[i] = compressor_[ch].processSample(channelData[i]);
+        }
     }
 }
 

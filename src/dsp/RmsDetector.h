@@ -19,6 +19,9 @@ public:
     /// Process one input sample and return the current RMS level (linear).
     float processSample(float input);
 
+    /// Process from a pre-computed squared value (for stereo-linked detection).
+    float processSampleFromSquared(double inputSquared);
+
 private:
     static constexpr double kTimeConstantSeconds = 0.020; // 20 ms
 

@@ -34,7 +34,14 @@ public:
     /// Process a single sample through the full compression pipeline.
     float processSample(float input);
 
+    /// Process a sample using an externally-provided squared value for the
+    /// detector. Used for stereo-linked mode where the detector input is
+    /// the averaged (L² + R²) / 2.
+    float processSampleLinked(float input, double detectorInputSquared);
+
 private:
+    float applyCompression(float input, float rmsLinear);
+
     RmsDetector detector_;
     GainComputer gainComputer_;
     Ballistics ballistics_;
