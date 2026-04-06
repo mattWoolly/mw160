@@ -12,7 +12,22 @@ FetchContent_Declare(
     GIT_TAG        7.0.12
     GIT_SHALLOW    TRUE
 )
-FetchContent_MakeAvailable(JUCE)
+
+# Fetch Catch2 v3 for unit testing
+FetchContent_Declare(
+    Catch2
+    GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+    GIT_TAG        v3.5.4
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_MakeAvailable(JUCE Catch2)
+
+# ---------- DSP library (pure C++, no JUCE dependency) ----------
+add_library(MW160_DSP STATIC
+    src/dsp/Compressor.cpp
+)
+target_include_directories(MW160_DSP PUBLIC src)
 
 # Plugin target
 juce_add_plugin(MW160
@@ -47,8 +62,27 @@ target_compile_definitions(MW160
 target_link_libraries(MW160
     PRIVATE
         juce::juce_audio_utils
+        MW160_DSP
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+# ---------- Test target (headless, no JUCE GUI dependency) ----------
+enable_testing()
+
+add_executable(MW160Tests
+    tests/test_smoke.cpp
+)
+
+target_link_libraries(MW160Tests
+    PRIVATE
+        MW160_DSP
+        Catch2::Catch2WithMain
+)
+
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+include(CTest)
+include(Catch)
+catch_discover_tests(MW160Tests)
