@@ -10,10 +10,12 @@ void Compressor::prepare(double sampleRate, int /*maxBlockSize*/)
     thresholdSmoother_.reset(sampleRate, kSmoothingTime_s);
     ratioSmoother_.reset(sampleRate, kSmoothingTime_s);
     outputGainSmoother_.reset(sampleRate, kSmoothingTime_s);
+    mixSmoother_.reset(sampleRate, kSmoothingTime_s);
 
     thresholdSmoother_.setCurrentAndTarget(0.0f);
     ratioSmoother_.setCurrentAndTarget(1.0f);
     outputGainSmoother_.setCurrentAndTarget(1.0f);  // 0 dB = linear 1.0
+    mixSmoother_.setCurrentAndTarget(1.0f);          // 100% wet
 }
 
 void Compressor::reset()
@@ -42,6 +44,11 @@ void Compressor::setOverEasy(bool enabled)
     overEasy_ = enabled;
 }
 
+void Compressor::setMix(float mixPercent)
+{
+    mixSmoother_.setTarget(mixPercent / 100.0f);
+}
+
 float Compressor::processSample(float input)
 {
     const float rmsLinear = detector_.processSample(input);
@@ -60,6 +67,7 @@ float Compressor::applyCompression(float input, float rmsLinear)
     const float threshold_dB = thresholdSmoother_.getNextValue();
     const float ratio        = ratioSmoother_.getNextValue();
     const float outputGain   = outputGainSmoother_.getNextValue();
+    const float mix          = mixSmoother_.getNextValue();
 
     // Convert to dB (floor at -100 dB for silence)
     const float rms_dB = (rmsLinear > 0.0f)
@@ -76,8 +84,10 @@ float Compressor::applyCompression(float input, float rmsLinear)
     // Convert gain reduction to linear gain
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);
 
-    // Apply gain reduction and output gain
-    return input * gain * outputGain;
+    // Blend dry and compressed, then apply output gain
+    const float compressed = input * gain;
+    const float blended = input * (1.0f - mix) + compressed * mix;
+    return blended * outputGain;
 }
 
 } // namespace mw160
