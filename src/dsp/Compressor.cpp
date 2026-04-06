@@ -37,6 +37,11 @@ void Compressor::setOutputGain(float gain_dB)
     outputGainSmoother_.setTarget(std::pow(10.0f, gain_dB / 20.0f));
 }
 
+void Compressor::setOverEasy(bool enabled)
+{
+    overEasy_ = enabled;
+}
+
 float Compressor::processSample(float input)
 {
     // Read smoothed parameter values (one step per sample)
@@ -53,7 +58,8 @@ float Compressor::processSample(float input)
                              : kSilenceFloor_dB;
 
     // 3. Compute instantaneous gain reduction
-    const float targetGR_dB = gainComputer_.computeGainReduction(rms_dB, threshold_dB, ratio);
+    const float kneeWidth = overEasy_ ? kOverEasyKneeWidth_dB : 0.0f;
+    const float targetGR_dB = gainComputer_.computeGainReduction(rms_dB, threshold_dB, ratio, kneeWidth);
 
     // 4. Smooth through ballistics envelope
     const float smoothedGR_dB = ballistics_.processSample(targetGR_dB);

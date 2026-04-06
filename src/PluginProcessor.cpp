@@ -9,6 +9,7 @@ MW160Processor::MW160Processor()
     thresholdParam_ = apvts.getRawParameterValue("threshold");
     ratioParam_ = apvts.getRawParameterValue("ratio");
     outputGainParam_ = apvts.getRawParameterValue("outputGain");
+    overEasyParam_ = apvts.getRawParameterValue("overEasy");
 }
 
 MW160Processor::~MW160Processor() = default;
@@ -112,12 +113,14 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
     const float threshold = thresholdParam_->load();
     const float ratio = ratioParam_->load();
     const float outputGain = outputGainParam_->load();
+    const bool overEasy = overEasyParam_->load() >= 0.5f;
 
     for (int ch = 0; ch < numChannels; ++ch)
     {
         compressor_[ch].setThreshold(threshold);
         compressor_[ch].setRatio(ratio);
         compressor_[ch].setOutputGain(outputGain);
+        compressor_[ch].setOverEasy(overEasy);
 
         float* channelData = buffer.getWritePointer(ch);
 

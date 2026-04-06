@@ -28,6 +28,9 @@ public:
     /// Set the output (makeup) gain in dB.
     void setOutputGain(float gain_dB);
 
+    /// Enable or disable OverEasy (soft knee) mode.
+    void setOverEasy(bool enabled);
+
     /// Process a single sample through the full compression pipeline.
     float processSample(float input);
 
@@ -40,6 +43,9 @@ private:
     ParameterSmoother<SmoothingType::Linear>         ratioSmoother_;
     ParameterSmoother<SmoothingType::Multiplicative>  outputGainSmoother_;
 
+    bool overEasy_ = false;
+
+    static constexpr float kOverEasyKneeWidth_dB = 10.0f;
     static constexpr float kSilenceFloor_dB = -100.0f;
     static constexpr double kSmoothingTime_s = 0.020;  // 20 ms
 };
