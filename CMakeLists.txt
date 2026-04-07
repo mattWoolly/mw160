@@ -53,6 +53,7 @@ target_sources(MW160
     PRIVATE
         src/PluginProcessor.cpp
         src/PluginEditor.cpp
+        src/PresetManager.cpp
 )
 
 target_compile_definitions(MW160
@@ -92,6 +93,7 @@ add_executable(MW160Tests
     tests/test_golden_regression.cpp
     tests/test_performance.cpp
     tests/test_aliasing.cpp
+    tests/test_factory_presets.cpp
 )
 
 target_link_libraries(MW160Tests

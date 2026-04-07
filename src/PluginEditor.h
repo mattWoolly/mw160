@@ -8,7 +8,8 @@
 /// Hardware-inspired design with LED-segment meters, metallic knobs,
 /// and threshold indicator LEDs modeled after the dbx 160A.
 class MW160Editor : public juce::AudioProcessorEditor,
-                    private juce::Timer
+                    private juce::Timer,
+                    private juce::ComboBox::Listener
 {
 public:
     explicit MW160Editor(MW160Processor&);
@@ -19,6 +20,7 @@ public:
 
 private:
     void timerCallback() override;
+    void comboBoxChanged(juce::ComboBox* comboBox) override;
 
     MW160Processor& processorRef;
 
@@ -34,6 +36,16 @@ private:
     juce::Label ratioLabel;
     juce::Label outputGainLabel;
     juce::Label mixLabel;
+
+    // --- Preset controls ---
+    juce::ComboBox presetBox;
+    juce::TextButton saveButton  { "Save" };
+    juce::TextButton deleteButton { "Del" };
+    juce::Label presetLabel;
+
+    void refreshPresetList();
+    void onSavePreset();
+    void onDeletePreset();
 
     // --- Toggle buttons ---
     juce::ToggleButton overEasyButton  { "OverEasy" };
