@@ -80,6 +80,7 @@ float Compressor::applyCompression(float input, float rmsLinear)
 
     // Smooth through ballistics envelope
     const float smoothedGR_dB = ballistics_.processSample(targetGR_dB);
+    lastGainReduction_dB_ = smoothedGR_dB;
 
     // Convert gain reduction to linear gain
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);

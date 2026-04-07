@@ -15,6 +15,16 @@ namespace
         label.attachToComponent(&slider, false);
         editor.addAndMakeVisible(label);
     }
+
+    void setupMeterLabel(juce::Label& label, const juce::String& text,
+                         juce::Component& parent)
+    {
+        label.setText(text, juce::dontSendNotification);
+        label.setJustificationType(juce::Justification::centred);
+        label.setFont(juce::Font(11.0f));
+        label.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+        parent.addAndMakeVisible(label);
+    }
 }
 
 MW160Editor::MW160Editor(MW160Processor& p)
@@ -28,6 +38,14 @@ MW160Editor::MW160Editor(MW160Processor& p)
     addAndMakeVisible(overEasyButton);
     addAndMakeVisible(stereoLinkButton);
 
+    // Meters
+    addAndMakeVisible(inputMeter);
+    addAndMakeVisible(outputMeter);
+    addAndMakeVisible(grMeter);
+    setupMeterLabel(inputMeterLabel, "IN", *this);
+    setupMeterLabel(outputMeterLabel, "OUT", *this);
+    setupMeterLabel(grMeterLabel, "GR", *this);
+
     // Attachments must be created after the components are added
     thresholdAttachment  = std::make_unique<SliderAttachment>(processorRef.apvts, "threshold",  thresholdSlider);
     ratioAttachment      = std::make_unique<SliderAttachment>(processorRef.apvts, "ratio",      ratioSlider);
@@ -36,10 +54,42 @@ MW160Editor::MW160Editor(MW160Processor& p)
     overEasyAttachment   = std::make_unique<ButtonAttachment>(processorRef.apvts, "overEasy",   overEasyButton);
     stereoLinkAttachment = std::make_unique<ButtonAttachment>(processorRef.apvts, "stereoLink", stereoLinkButton);
 
-    setSize(400, 300);
+    setSize(500, 330);
+
+    startTimerHz(30);
 }
 
-MW160Editor::~MW160Editor() = default;
+MW160Editor::~MW160Editor()
+{
+    stopTimer();
+}
+
+void MW160Editor::timerCallback()
+{
+    constexpr float decayRate = 0.85f;    // per-tick decay for level meters
+    constexpr float grDecayRate = 0.85f;  // per-tick decay for GR (towards 0)
+
+    // Input level
+    const float newInput = processorRef.getMeterInputLevel();
+    displayedInputLevel_ = (newInput > displayedInputLevel_)
+                               ? newInput
+                               : std::max(newInput, displayedInputLevel_ * decayRate + (-100.0f) * (1.0f - decayRate));
+    inputMeter.setLevel(displayedInputLevel_);
+
+    // Output level
+    const float newOutput = processorRef.getMeterOutputLevel();
+    displayedOutputLevel_ = (newOutput > displayedOutputLevel_)
+                                ? newOutput
+                                : std::max(newOutput, displayedOutputLevel_ * decayRate + (-100.0f) * (1.0f - decayRate));
+    outputMeter.setLevel(displayedOutputLevel_);
+
+    // Gain reduction (negative values; decay towards 0)
+    const float newGR = processorRef.getMeterGainReduction();
+    displayedGR_ = (newGR < displayedGR_)
+                       ? newGR   // deeper GR — snap immediately
+                       : displayedGR_ * grDecayRate;  // releasing — decay towards 0
+    grMeter.setLevel(displayedGR_);
+}
 
 void MW160Editor::paint(juce::Graphics& g)
 {
@@ -56,6 +106,32 @@ void MW160Editor::resized()
 
     // Title area
     bounds.removeFromTop(24);
+
+    // Meter strip on the right side
+    auto meterStrip = bounds.removeFromRight(90);
+    meterStrip.removeFromTop(18); // align with slider label space
+
+    const int meterWidth = 20;
+    const int meterSpacing = 10;
+    const int totalMetersWidth = 3 * meterWidth + 2 * meterSpacing;
+    const int meterXOffset = (meterStrip.getWidth() - totalMetersWidth) / 2;
+    auto meterArea = meterStrip.withTrimmedLeft(meterXOffset).withWidth(totalMetersWidth);
+
+    // Labels above meters
+    auto meterLabelArea = meterArea.removeFromTop(16);
+    inputMeterLabel.setBounds(meterLabelArea.removeFromLeft(meterWidth));
+    meterLabelArea.removeFromLeft(meterSpacing);
+    outputMeterLabel.setBounds(meterLabelArea.removeFromLeft(meterWidth));
+    meterLabelArea.removeFromLeft(meterSpacing);
+    grMeterLabel.setBounds(meterLabelArea.removeFromLeft(meterWidth));
+
+    // Meter bars
+    auto meterBarArea = meterArea.removeFromTop(140);
+    inputMeter.setBounds(meterBarArea.removeFromLeft(meterWidth));
+    meterBarArea.removeFromLeft(meterSpacing);
+    outputMeter.setBounds(meterBarArea.removeFromLeft(meterWidth));
+    meterBarArea.removeFromLeft(meterSpacing);
+    grMeter.setBounds(meterBarArea.removeFromLeft(meterWidth));
 
     // Labels sit above sliders (attachToComponent handles this), reserve space
     bounds.removeFromTop(18);

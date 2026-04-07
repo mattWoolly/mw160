@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include <cmath>
 
 MW160Processor::MW160Processor()
     : AudioProcessor(BusesProperties()
@@ -129,6 +130,12 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
         compressor_[ch].setMix(mix);
     }
 
+    // Measure peak input level across all channels
+    float peakInput = 0.0f;
+    for (int ch = 0; ch < numChannels; ++ch)
+        peakInput = std::max(peakInput, buffer.getMagnitude(ch, 0, numSamples));
+
+    // Process audio
     if (stereoLink && numChannels == 2)
     {
         float* dataL = buffer.getWritePointer(0);
@@ -154,6 +161,26 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
                 channelData[i] = compressor_[ch].processSample(channelData[i]);
         }
     }
+
+    // Measure peak output level across all channels
+    float peakOutput = 0.0f;
+    for (int ch = 0; ch < numChannels; ++ch)
+        peakOutput = std::max(peakOutput, buffer.getMagnitude(ch, 0, numSamples));
+
+    // Get gain reduction (average across active channels)
+    float grSum = 0.0f;
+    for (int ch = 0; ch < numChannels; ++ch)
+        grSum += compressor_[ch].getLastGainReduction_dB();
+    const float avgGR = (numChannels > 0) ? grSum / static_cast<float>(numChannels) : 0.0f;
+
+    // Convert peak levels to dB and publish to meter atomics
+    constexpr float kSilenceFloor_dB = -100.0f;
+    const float inputLevel_dB  = (peakInput  > 0.0f) ? 20.0f * std::log10(peakInput)  : kSilenceFloor_dB;
+    const float outputLevel_dB = (peakOutput > 0.0f) ? 20.0f * std::log10(peakOutput) : kSilenceFloor_dB;
+
+    meterInputLevel_.store(inputLevel_dB, std::memory_order_relaxed);
+    meterOutputLevel_.store(outputLevel_dB, std::memory_order_relaxed);
+    meterGainReduction_.store(avgGR, std::memory_order_relaxed);
 }
 
 juce::AudioProcessorEditor* MW160Processor::createEditor()

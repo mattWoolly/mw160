@@ -43,6 +43,9 @@ public:
     /// the averaged (L² + R²) / 2.
     float processSampleLinked(float input, double detectorInputSquared);
 
+    /// Returns the most recent smoothed gain reduction in dB (0 or negative).
+    float getLastGainReduction_dB() const { return lastGainReduction_dB_; }
+
 private:
     float applyCompression(float input, float rmsLinear);
 
@@ -57,6 +60,7 @@ private:
     ParameterSmoother<SmoothingType::Linear>         mixSmoother_;
 
     bool overEasy_ = false;
+    float lastGainReduction_dB_ = 0.0f;
 
     static constexpr float kOverEasyKneeWidth_dB = 10.0f;
     static constexpr float kSilenceFloor_dB = -100.0f;

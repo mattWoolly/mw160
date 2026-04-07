@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Compressor.h"
+#include <atomic>
 
 class MW160Processor : public juce::AudioProcessor
 {
@@ -40,6 +41,13 @@ public:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    /// Peak input level in dB (max across channels), updated per block.
+    float getMeterInputLevel()     const { return meterInputLevel_.load(std::memory_order_relaxed); }
+    /// Peak output level in dB (max across channels), updated per block.
+    float getMeterOutputLevel()    const { return meterOutputLevel_.load(std::memory_order_relaxed); }
+    /// Current gain reduction in dB (0 or negative), updated per block.
+    float getMeterGainReduction()  const { return meterGainReduction_.load(std::memory_order_relaxed); }
+
 private:
     static constexpr int kMaxChannels = 2;
     mw160::Compressor compressor_[kMaxChannels];
@@ -50,6 +58,10 @@ private:
     std::atomic<float>* overEasyParam_ = nullptr;
     std::atomic<float>* stereoLinkParam_ = nullptr;
     std::atomic<float>* mixParam_ = nullptr;
+
+    std::atomic<float> meterInputLevel_    { -100.0f };
+    std::atomic<float> meterOutputLevel_   { -100.0f };
+    std::atomic<float> meterGainReduction_ { 0.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MW160Processor)
 };
