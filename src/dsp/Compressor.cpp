@@ -22,6 +22,7 @@ void Compressor::reset()
 {
     detector_.reset();
     ballistics_.reset();
+    lastGainReduction_dB_ = 0.0f;
 }
 
 void Compressor::setThreshold(float threshold_dB)
@@ -80,6 +81,7 @@ float Compressor::applyCompression(float input, float rmsLinear)
 
     // Smooth through ballistics envelope
     const float smoothedGR_dB = ballistics_.processSample(targetGR_dB);
+    lastGainReduction_dB_ = smoothedGR_dB;
 
     // Convert gain reduction to linear gain
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);
