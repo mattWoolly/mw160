@@ -88,6 +88,7 @@ add_executable(MW160Tests
     tests/test_vca_saturation.cpp
     tests/test_metering.cpp
     tests/test_timing_calibration.cpp
+    tests/test_gain_staging_calibration.cpp
 )
 
 target_link_libraries(MW160Tests
