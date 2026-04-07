@@ -89,12 +89,19 @@ add_executable(MW160Tests
     tests/test_metering.cpp
     tests/test_timing_calibration.cpp
     tests/test_gain_staging_calibration.cpp
+    tests/test_golden_regression.cpp
 )
 
 target_link_libraries(MW160Tests
     PRIVATE
         MW160_DSP
         Catch2::Catch2WithMain
+)
+
+# Pass the golden reference directory path to tests at compile time
+target_compile_definitions(MW160Tests
+    PRIVATE
+        GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/golden"
 )
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
