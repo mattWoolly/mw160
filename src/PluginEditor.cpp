@@ -125,9 +125,9 @@ void MW160Editor::timerCallback()
     ledBelow_ = (displayedInputLevel_ < threshold + halfKnee);
     ledAbove_ = (displayedInputLevel_ > threshold - halfKnee);
 
-    // Only repaint the header area if LED state changed
+    // Only repaint the header + threshold LED area if LED state changed
     if (wasAbove != ledAbove_ || wasBelow != ledBelow_)
-        repaint(0, 0, getWidth(), 60);
+        repaint(0, 0, getWidth(), 100);
 }
 
 // =============================================================================
