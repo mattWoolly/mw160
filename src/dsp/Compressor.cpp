@@ -22,6 +22,7 @@ void Compressor::reset()
 {
     detector_.reset();
     ballistics_.reset();
+    lastGainReduction_dB_ = 0.0f;
 }
 
 void Compressor::setThreshold(float threshold_dB)

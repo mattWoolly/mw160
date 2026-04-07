@@ -29,7 +29,9 @@ public:
         // Map dB to 0..1 proportion
         const float minDb = (direction_ == Direction::TopDown) ? -40.0f : -60.0f;
         const float proportion = juce::jlimit(0.0f, 1.0f,
-            (level_dB_ - minDb) / (0.0f - minDb));
+            (direction_ == Direction::TopDown)
+                ? level_dB_ / minDb               // 0 dB → 0.0 (empty), -40 dB → 1.0 (full)
+                : (level_dB_ - minDb) / -minDb);  // -60 dB → 0.0 (empty), 0 dB → 1.0 (full)
 
         if (proportion > 0.0f)
         {
