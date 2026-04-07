@@ -90,6 +90,8 @@ add_executable(MW160Tests
     tests/test_timing_calibration.cpp
     tests/test_gain_staging_calibration.cpp
     tests/test_golden_regression.cpp
+    tests/test_performance.cpp
+    tests/test_aliasing.cpp
 )
 
 target_link_libraries(MW160Tests
@@ -104,7 +106,19 @@ target_compile_definitions(MW160Tests
         GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/golden"
 )
 
+# ---------- No-alloc test (separate executable, overrides global operator new) ----------
+add_executable(MW160NoAllocTests
+    tests/test_no_alloc.cpp
+)
+
+target_link_libraries(MW160NoAllocTests
+    PRIVATE
+        MW160_DSP
+        Catch2::Catch2WithMain
+)
+
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(CTest)
 include(Catch)
 catch_discover_tests(MW160Tests)
+catch_discover_tests(MW160NoAllocTests)
