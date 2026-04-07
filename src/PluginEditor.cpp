@@ -59,6 +59,24 @@ MW160Editor::MW160Editor(MW160Processor& p)
     setupKnob(outputGainSlider, outputGainLabel, "OUTPUT",      *this);
     setupKnob(mixSlider,        mixLabel,        "MIX",         *this);
 
+    // --- Preset controls ---
+    presetLabel.setText("PRESET", juce::dontSendNotification);
+    presetLabel.setJustificationType(juce::Justification::centredLeft);
+    presetLabel.setFont(juce::Font(10.0f).boldened());
+    presetLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaaaaaa));
+    addAndMakeVisible(presetLabel);
+
+    presetBox.setTextWhenNothingSelected("Select preset...");
+    refreshPresetList();
+    presetBox.addListener(this);
+    addAndMakeVisible(presetBox);
+
+    saveButton.onClick = [this] { onSavePreset(); };
+    addAndMakeVisible(saveButton);
+
+    deleteButton.onClick = [this] { onDeletePreset(); };
+    addAndMakeVisible(deleteButton);
+
     addAndMakeVisible(overEasyButton);
     addAndMakeVisible(stereoLinkButton);
 
@@ -128,6 +146,98 @@ void MW160Editor::timerCallback()
     // Only repaint the header + threshold LED area if LED state changed
     if (wasAbove != ledAbove_ || wasBelow != ledBelow_)
         repaint(0, 0, getWidth(), 100);
+}
+
+// =============================================================================
+
+void MW160Editor::comboBoxChanged(juce::ComboBox* comboBox)
+{
+    if (comboBox != &presetBox)
+        return;
+
+    const int selected = presetBox.getSelectedId();
+    if (selected > 0)
+        processorRef.presetManager.loadPreset(selected - 1);
+}
+
+void MW160Editor::refreshPresetList()
+{
+    presetBox.clear(juce::dontSendNotification);
+    auto& pm = processorRef.presetManager;
+    pm.scanUserPresets();
+
+    int id = 1;
+
+    // Factory presets
+    for (int i = 0; i < pm.getNumFactoryPresets(); ++i)
+        presetBox.addItem(pm.getPresetName(i), id++);
+
+    // Separator + user presets
+    if (pm.getNumPresets() > pm.getNumFactoryPresets())
+    {
+        presetBox.addSeparator();
+        for (int i = pm.getNumFactoryPresets(); i < pm.getNumPresets(); ++i)
+            presetBox.addItem(pm.getPresetName(i), id++);
+    }
+
+    // Restore current selection
+    const int idx = pm.getCurrentIndex();
+    if (idx >= 0 && idx < pm.getNumPresets())
+        presetBox.setSelectedId(idx + 1, juce::dontSendNotification);
+}
+
+void MW160Editor::onSavePreset()
+{
+    auto* aw = new juce::AlertWindow("Save Preset",
+                                      "Enter a name for the preset:",
+                                      juce::MessageBoxIconType::NoIcon);
+    aw->addTextEditor("name", "", "Preset name:");
+    aw->addButton("Save", 1);
+    aw->addButton("Cancel", 0);
+
+    aw->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, aw](int result)
+        {
+            if (result == 1)
+            {
+                auto name = aw->getTextEditorContents("name").trim();
+                if (name.isNotEmpty())
+                {
+                    processorRef.presetManager.saveUserPreset(name);
+                    refreshPresetList();
+                }
+            }
+            delete aw;
+        }));
+}
+
+void MW160Editor::onDeletePreset()
+{
+    auto& pm = processorRef.presetManager;
+    const int idx = pm.getCurrentIndex();
+
+    if (idx < 0 || pm.isFactoryPreset(idx))
+        return;
+
+    const auto name = pm.getPresetName(idx);
+
+    auto* aw = new juce::AlertWindow("Delete Preset",
+                                      "Delete \"" + name + "\"?",
+                                      juce::MessageBoxIconType::WarningIcon);
+    aw->addButton("Delete", 1);
+    aw->addButton("Cancel", 0);
+
+    aw->enterModalState(true, juce::ModalCallbackFunction::create(
+        [this, aw, idx](int result)
+        {
+            if (result == 1)
+            {
+                processorRef.presetManager.deleteUserPreset(idx);
+                presetBox.setSelectedId(0, juce::dontSendNotification);
+                refreshPresetList();
+            }
+            delete aw;
+        }));
 }
 
 // =============================================================================
@@ -224,6 +334,17 @@ void MW160Editor::resized()
     const int btnH = 24;
     overEasyButton.setBounds(btnX, 102, btnW, btnH);
     stereoLinkButton.setBounds(btnX, 130, btnW, btnH);
+
+    // ----- Preset controls (below toggles, right side) -----
+    const int presetY    = 168;
+    const int presetBtnW = 40;
+    const int presetGap  = 4;
+    presetLabel.setBounds(btnX, presetY, 200, 14);
+    const int boxY = presetY + 16;
+    const int boxW = getWidth() - btnX - 16 - (presetBtnW * 2) - (presetGap * 2);
+    presetBox.setBounds(btnX, boxY, boxW, btnH);
+    saveButton.setBounds(btnX + boxW + presetGap, boxY, presetBtnW, btnH);
+    deleteButton.setBounds(btnX + boxW + presetGap * 2 + presetBtnW, boxY, presetBtnW, btnH);
 
     // ----- Knob row (bottom section) -----
     const int knobAreaY = 254;

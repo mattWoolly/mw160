@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Compressor.h"
+#include "PresetManager.h"
 #include <atomic>
 
 class MW160Processor : public juce::AudioProcessor
@@ -38,6 +39,7 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState apvts;
+    PresetManager presetManager;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

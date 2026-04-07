@@ -6,7 +6,8 @@ MW160Processor::MW160Processor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts(*this, nullptr, "Parameters", createParameterLayout())
+      apvts(*this, nullptr, "Parameters", createParameterLayout()),
+      presetManager(apvts)
 {
     thresholdParam_ = apvts.getRawParameterValue("threshold");
     ratioParam_ = apvts.getRawParameterValue("ratio");
@@ -69,10 +70,22 @@ bool MW160Processor::producesMidi() const { return false; }
 bool MW160Processor::isMidiEffect() const { return false; }
 double MW160Processor::getTailLengthSeconds() const { return 0.0; }
 
-int MW160Processor::getNumPrograms() { return 1; }
-int MW160Processor::getCurrentProgram() { return 0; }
-void MW160Processor::setCurrentProgram(int) {}
-const juce::String MW160Processor::getProgramName(int) { return {}; }
+int MW160Processor::getNumPrograms() { return presetManager.getNumFactoryPresets(); }
+int MW160Processor::getCurrentProgram() { return presetManager.getCurrentIndex(); }
+
+void MW160Processor::setCurrentProgram(int index)
+{
+    if (index >= 0 && index < presetManager.getNumFactoryPresets())
+        presetManager.loadPreset(index);
+}
+
+const juce::String MW160Processor::getProgramName(int index)
+{
+    if (index >= 0 && index < presetManager.getNumFactoryPresets())
+        return presetManager.getPresetName(index);
+    return {};
+}
+
 void MW160Processor::changeProgramName(int, const juce::String&) {}
 
 void MW160Processor::prepareToPlay(double sampleRate, int samplesPerBlock)

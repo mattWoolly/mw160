@@ -15,6 +15,24 @@ public:
         setColour(juce::Slider::textBoxOutlineColourId,      juce::Colour(0xff3a3a3a));
         setColour(juce::Label::textColourId,                 kTextBright);
         setColour(juce::ToggleButton::textColourId,          kTextBright);
+
+        // ComboBox colours
+        setColour(juce::ComboBox::backgroundColourId,      juce::Colour(0xff2a2a2a));
+        setColour(juce::ComboBox::textColourId,            kTextBright);
+        setColour(juce::ComboBox::outlineColourId,         juce::Colour(0xff3a3a3a));
+        setColour(juce::ComboBox::arrowColourId,           kAccent);
+
+        // PopupMenu colours
+        setColour(juce::PopupMenu::backgroundColourId,           kPanel);
+        setColour(juce::PopupMenu::textColourId,                 kTextBright);
+        setColour(juce::PopupMenu::highlightedBackgroundColourId, juce::Colour(0xff404040));
+        setColour(juce::PopupMenu::highlightedTextColourId,      kTextBright);
+
+        // TextButton colours
+        setColour(juce::TextButton::buttonColourId,        juce::Colour(0xff333333));
+        setColour(juce::TextButton::textColourOffId,       kTextBright);
+        setColour(juce::TextButton::buttonOnColourId,      juce::Colour(0xff404040));
+        setColour(juce::TextButton::textColourOnId,        kTextBright);
     }
 
     void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
