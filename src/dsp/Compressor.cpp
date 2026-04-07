@@ -84,9 +84,12 @@ float Compressor::applyCompression(float input, float rmsLinear)
     // Convert gain reduction to linear gain
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);
 
-    // Blend dry and compressed, then apply output gain
+    // Apply gain reduction and VCA saturation
     const float compressed = input * gain;
-    const float blended = input * (1.0f - mix) + compressed * mix;
+    const float saturated = vcaSaturation_.processSample(compressed, smoothedGR_dB);
+
+    // Blend dry and saturated, then apply output gain
+    const float blended = input * (1.0f - mix) + saturated * mix;
     return blended * outputGain;
 }
 

@@ -3,6 +3,7 @@
 #include "RmsDetector.h"
 #include "GainComputer.h"
 #include "Ballistics.h"
+#include "VcaSaturation.h"
 #include "ParameterSmoother.h"
 
 #include <cmath>
@@ -48,6 +49,7 @@ private:
     RmsDetector detector_;
     GainComputer gainComputer_;
     Ballistics ballistics_;
+    VcaSaturation vcaSaturation_;
 
     ParameterSmoother<SmoothingType::Linear>         thresholdSmoother_;
     ParameterSmoother<SmoothingType::Linear>         ratioSmoother_;

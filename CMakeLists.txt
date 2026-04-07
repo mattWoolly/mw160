@@ -29,6 +29,7 @@ add_library(MW160_DSP STATIC
     src/dsp/Compressor.cpp
     src/dsp/GainComputer.cpp
     src/dsp/RmsDetector.cpp
+    src/dsp/VcaSaturation.cpp
 )
 target_include_directories(MW160_DSP PUBLIC src)
 
@@ -84,6 +85,7 @@ add_executable(MW160Tests
     tests/test_parameter_smoothing.cpp
     tests/test_rms_detector.cpp
     tests/test_stereo_link.cpp
+    tests/test_vca_saturation.cpp
 )
 
 target_link_libraries(MW160Tests
