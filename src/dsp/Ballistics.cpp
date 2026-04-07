@@ -28,7 +28,7 @@ float Ballistics::processSample(float targetGainReduction_dB)
         // producing the nonlinear attack trajectory characteristic of the
         // DBX 160: fast onset that decelerates near final GR.
         const double magnitude = -diff;
-        const double attackTime = kBaseAttackTime_s / std::max(1.0, magnitude);
+        const double attackTime = kBaseAttackTime_s / std::max(1.0, std::pow(magnitude, kAttackExponent));
         const double coeff = std::exp(-1.0 / (attackTime * sampleRate_));
         currentGR_ = coeff * currentGR_ + (1.0 - coeff) * target;
     }

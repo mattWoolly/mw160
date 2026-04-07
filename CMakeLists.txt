@@ -87,6 +87,7 @@ add_executable(MW160Tests
     tests/test_stereo_link.cpp
     tests/test_vca_saturation.cpp
     tests/test_metering.cpp
+    tests/test_timing_calibration.cpp
 )
 
 target_link_libraries(MW160Tests

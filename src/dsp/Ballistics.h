@@ -30,10 +30,14 @@ private:
     double currentGR_ = 0.0;         // current smoothed gain reduction in dB
 
     static constexpr double kReleaseRate_dBPerSec = 125.0;
-    // Base attack time constant (~1 ms), scaled inversely with transient
-    // magnitude to produce program-dependent behavior. Larger transients
-    // see a shorter effective time constant, yielding faster attack.
-    static constexpr double kBaseAttackTime_s = 0.001;
+    // Base attack time constant, scaled inversely with transient magnitude
+    // raised to kAttackExponent to produce program-dependent behavior.
+    // Larger transients see a shorter effective time constant, yielding
+    // faster attack. The exponent > 1.0 strengthens the program-dependent
+    // scaling to match published DBX 160 specs:
+    //   10 dB GR → ~15 ms, 20 dB GR → ~5 ms, 30 dB GR → ~3 ms
+    static constexpr double kBaseAttackTime_s = 0.025;
+    static constexpr double kAttackExponent = 1.55;
 };
 
 } // namespace mw160
