@@ -53,3 +53,27 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Install pluginval
+        run: |
+          curl -sL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_${{ runner.os }}.zip"
+          unzip -o pluginval.zip -d build
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            chmod +x build/pluginval
+          fi
+
+      - name: Install Xvfb (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y xvfb
+
+      - name: Validate VST3 with pluginval
+        run: |
+          VST3_PATH="build/MW160_artefacts/Release/VST3/MW160.vst3"
+          if [ ! -d "$VST3_PATH" ]; then
+            VST3_PATH="build/MW160_artefacts/VST3/MW160.vst3"
+          fi
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a build/pluginval --validate-in-process --strictness-level 5 --validate "$VST3_PATH"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            build/pluginval.app/Contents/MacOS/pluginval --validate-in-process --strictness-level 5 --validate "$VST3_PATH"
+          fi
