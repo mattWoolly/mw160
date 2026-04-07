@@ -71,7 +71,11 @@ bool MW160Processor::isMidiEffect() const { return false; }
 double MW160Processor::getTailLengthSeconds() const { return 0.0; }
 
 int MW160Processor::getNumPrograms() { return presetManager.getNumFactoryPresets(); }
-int MW160Processor::getCurrentProgram() { return presetManager.getCurrentIndex(); }
+int MW160Processor::getCurrentProgram()
+{
+    const int idx = presetManager.getCurrentIndex();
+    return (idx >= 0 && idx < presetManager.getNumFactoryPresets()) ? idx : 0;
+}
 
 void MW160Processor::setCurrentProgram(int index)
 {

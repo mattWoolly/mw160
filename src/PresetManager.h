@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "FactoryPresets.h"
+#include <atomic>
 
 class PresetManager
 {
@@ -19,12 +20,12 @@ public:
     void deleteUserPreset(int index);
     void scanUserPresets();
 
-    int getCurrentIndex() const { return currentIndex_; }
-    void setCurrentIndex(int i) { currentIndex_ = i; }
+    int getCurrentIndex() const { return currentIndex_.load(std::memory_order_relaxed); }
+    void setCurrentIndex(int i) { currentIndex_.store(i, std::memory_order_relaxed); }
 
 private:
     juce::AudioProcessorValueTreeState& apvts_;
-    int currentIndex_ = -1;
+    std::atomic<int> currentIndex_ { -1 };
 
     juce::StringArray userPresetNames_;
     juce::Array<juce::File> userPresetFiles_;

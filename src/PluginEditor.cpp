@@ -195,16 +195,17 @@ void MW160Editor::onSavePreset()
     aw->addButton("Save", 1);
     aw->addButton("Cancel", 0);
 
+    juce::Component::SafePointer<MW160Editor> safeThis(this);
     aw->enterModalState(true, juce::ModalCallbackFunction::create(
-        [this, aw](int result)
+        [safeThis, aw](int result)
         {
-            if (result == 1)
+            if (safeThis != nullptr && result == 1)
             {
                 auto name = aw->getTextEditorContents("name").trim();
                 if (name.isNotEmpty())
                 {
-                    processorRef.presetManager.saveUserPreset(name);
-                    refreshPresetList();
+                    safeThis->processorRef.presetManager.saveUserPreset(name);
+                    safeThis->refreshPresetList();
                 }
             }
             delete aw;
@@ -227,14 +228,15 @@ void MW160Editor::onDeletePreset()
     aw->addButton("Delete", 1);
     aw->addButton("Cancel", 0);
 
+    juce::Component::SafePointer<MW160Editor> safeThis(this);
     aw->enterModalState(true, juce::ModalCallbackFunction::create(
-        [this, aw, idx](int result)
+        [safeThis, aw, idx](int result)
         {
-            if (result == 1)
+            if (safeThis != nullptr && result == 1)
             {
-                processorRef.presetManager.deleteUserPreset(idx);
-                presetBox.setSelectedId(0, juce::dontSendNotification);
-                refreshPresetList();
+                safeThis->processorRef.presetManager.deleteUserPreset(idx);
+                safeThis->presetBox.setSelectedId(0, juce::dontSendNotification);
+                safeThis->refreshPresetList();
             }
             delete aw;
         }));
