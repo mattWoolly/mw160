@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "PluginEditor.h"
 
 MW160Processor::MW160Processor()
     : AudioProcessor(BusesProperties()
@@ -157,7 +158,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
 
 juce::AudioProcessorEditor* MW160Processor::createEditor()
 {
-    return new juce::GenericAudioProcessorEditor(*this);
+    return new MW160Editor(*this);
 }
 
 bool MW160Processor::hasEditor() const { return true; }
