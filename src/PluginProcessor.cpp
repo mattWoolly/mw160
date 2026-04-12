@@ -33,7 +33,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"ratio", 1},
-        "Compression",
+        "Ratio",
         juce::NormalisableRange<float>(1.0f, 60.0f, 0.1f),
         1.0f,
         juce::AudioParameterFloatAttributes().withLabel(":1")));
