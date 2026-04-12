@@ -40,7 +40,11 @@ public:
     {
         using namespace mw160::Palette;
 
-        auto bounds = getLocalBounds().toFloat();
+        // Centre a 36 px pill within the (possibly larger) hit-target bounds
+        // for WCAG §11.1 compliance.
+        auto bounds = getLocalBounds().toFloat()
+                          .withSizeKeepingCentre(getLocalBounds().toFloat().getWidth(),
+                                                 juce::jmin(getLocalBounds().toFloat().getHeight(), 36.0f));
         const float radius = 6.0f;
 
         // Outer pill.
