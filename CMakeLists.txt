@@ -110,6 +110,7 @@ target_link_libraries(MW160Tests
 target_compile_definitions(MW160Tests
     PRIVATE
         GOLDEN_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/golden"
+        _USE_MATH_DEFINES   # expose M_PI via <cmath> on MSVC; no-op on GCC/Clang
 )
 
 # ---------- No-alloc test (separate executable, overrides global operator new) ----------
@@ -121,6 +122,11 @@ target_link_libraries(MW160NoAllocTests
     PRIVATE
         MW160_DSP
         Catch2::Catch2WithMain
+)
+
+target_compile_definitions(MW160NoAllocTests
+    PRIVATE
+        _USE_MATH_DEFINES   # defensive: expose M_PI on MSVC if a future source needs it
 )
 
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
