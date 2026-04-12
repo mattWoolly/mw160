@@ -94,11 +94,14 @@ add_executable(MW160Tests
     tests/test_performance.cpp
     tests/test_aliasing.cpp
     tests/test_factory_presets.cpp
+    tests/test_plugin_processor_state.cpp
 )
 
 target_link_libraries(MW160Tests
     PRIVATE
         MW160_DSP
+        MW160
+        juce::juce_audio_processors
         Catch2::Catch2WithMain
 )
 

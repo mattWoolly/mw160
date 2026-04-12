@@ -223,8 +223,38 @@ void MW160Processor::getStateInformation(juce::MemoryBlock& destData)
 void MW160Processor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
-    if (xml != nullptr && xml->hasTagName(apvts.state.getType()))
-        apvts.replaceState(juce::ValueTree::fromXml(*xml));
+    if (xml == nullptr || ! xml->hasTagName(apvts.state.getType()))
+        return;
+
+    auto restoredState = juce::ValueTree::fromXml(*xml);
+    apvts.replaceState(restoredState);
+
+    // QA-CONF-001: AudioProcessorValueTreeState::replaceState only
+    // re-drives a parameter through setValueNotifyingHost when the
+    // value read from the restored ValueTree differs from the
+    // adapter's currently stored unnormalised value. The bool
+    // parameters' adapter atomics already snap (via the underlying
+    // NormalisableRange), so any restored bool value frequently
+    // matches the adapter's current value and the early-return path
+    // skips re-driving the parameter object. The parameter's own
+    // internal value atomic can therefore remain stuck at whatever
+    // raw float was last written by the host (e.g. an unsnapped fuzz
+    // value from pluginval). Re-apply every parameter explicitly
+    // here so each parameter object re-snaps through the public API.
+    for (auto* parameter : getParameters())
+    {
+        if (auto* withID = dynamic_cast<juce::AudioProcessorParameterWithID*>(parameter))
+        {
+            if (auto child = restoredState.getChildWithProperty("id", withID->paramID); child.isValid())
+            {
+                const auto restoredValue = static_cast<float>(child.getProperty("value", parameter->getValue()));
+                if (auto* ranged = dynamic_cast<juce::RangedAudioParameter*>(parameter))
+                    parameter->setValueNotifyingHost(ranged->convertTo0to1(restoredValue));
+                else
+                    parameter->setValueNotifyingHost(restoredValue);
+            }
+        }
+    }
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
