@@ -558,8 +558,9 @@ void MW160Editor::paint(juce::Graphics& g)
         g.setColour(textInk);
         g.drawText("mw160", wordmarkArea, juce::Justification::centredLeft);
 
-        // Sublabel "VCA COMPRESSOR".
-        auto subArea = juce::Rectangle<float>(64.0f * sx, 38.0f * sy, 360.0f * sx, 16.0f * sy);
+        // Sublabel "VCA COMPRESSOR" — placed below the 34 px wordmark box
+        // with an explicit gap to avoid overlap (DESIGN-REVIEW-002).
+        auto subArea = juce::Rectangle<float>(64.0f * sx, 42.0f * sy, 360.0f * sx, 14.0f * sy);
         g.setFont(mw160::Fonts::withTracking(mw160::Fonts::interMedium(10.0f * sy), 2.0f));
         g.setColour(textInk.withAlpha(0.75f));
         g.drawText("VCA COMPRESSOR", subArea, juce::Justification::centredLeft);

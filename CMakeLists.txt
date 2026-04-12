@@ -49,6 +49,15 @@ juce_add_plugin(MW160
     PRODUCT_NAME "MW160"
 )
 
+# ---------- Embedded font binary data (VISUAL_SPEC.md §4.1) ----------
+juce_add_binary_data(FontBinaryData
+    SOURCES
+        assets/fonts/Inter-Regular.ttf
+        assets/fonts/Inter-Medium.ttf
+        assets/fonts/Inter-Bold.ttf
+        assets/fonts/JetBrainsMono-Regular.ttf
+)
+
 target_sources(MW160
     PRIVATE
         src/PluginProcessor.cpp
@@ -68,6 +77,7 @@ target_link_libraries(MW160
     PRIVATE
         juce::juce_audio_utils
         MW160_DSP
+        FontBinaryData
     PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
