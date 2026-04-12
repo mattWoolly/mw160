@@ -52,7 +52,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
     // versioned state-upgrade path. Do not rename this ID here.
     layout.add(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID{"overEasy", 1},
-        "OverEasy",
+        "Knee",
         false));
 
     layout.add(std::make_unique<juce::AudioParameterBool>(
