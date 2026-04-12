@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "dsp/Compressor.h"
+#include "dsp/ParameterSmoother.h"
 #include "PresetManager.h"
 #include <atomic>
 
@@ -38,6 +39,8 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
+    juce::AudioProcessorParameter* getBypassParameter() const override;
+
     juce::AudioProcessorValueTreeState apvts;
     PresetManager presetManager;
 
@@ -60,6 +63,9 @@ private:
     std::atomic<float>* overEasyParam_ = nullptr;
     std::atomic<float>* stereoLinkParam_ = nullptr;
     std::atomic<float>* mixParam_ = nullptr;
+    std::atomic<float>* bypassParam_ = nullptr;
+
+    mw160::ParameterSmoother<mw160::SmoothingType::Linear> bypassSmoother_;
 
     std::atomic<float> meterInputLevel_    { -100.0f };
     std::atomic<float> meterOutputLevel_   { -100.0f };

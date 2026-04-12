@@ -232,11 +232,7 @@ MW160Editor::MW160Editor(MW160Processor& p)
     mixAttachment        = std::make_unique<SliderAttachment>(processorRef.apvts, "mix",        mixSlider);
     kneeAttachment       = std::make_unique<ButtonAttachment>(processorRef.apvts, "overEasy",   kneeButton);
     stereoLinkAttachment = std::make_unique<ButtonAttachment>(processorRef.apvts, "stereoLink", stereoLinkButton);
-    // NOTE: No "bypass" APVTS parameter exists in the current processor.
-    // VISUAL_SPEC.md §2.4 / §7.4 calls for a BYPASS switch, but since
-    // adding new APVTS parameters is out of scope for this pass, the
-    // bypass toggle here is presently visual only. A follow-up backlog
-    // entry (DESIGN-IMPL-001) tracks wiring it up.
+    bypassAttachment     = std::make_unique<ButtonAttachment>(processorRef.apvts, "bypass",     bypassButton);
 
     // Tab focus order per VISUAL_SPEC.md §11.4:
     // presets -> THR -> RATIO -> OUT -> MIX -> KNEE -> STEREO -> BYPASS -> meter mode.

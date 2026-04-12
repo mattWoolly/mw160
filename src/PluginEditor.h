@@ -109,10 +109,7 @@ private:
     std::unique_ptr<SliderAttachment> mixAttachment;
     std::unique_ptr<ButtonAttachment> kneeAttachment;
     std::unique_ptr<ButtonAttachment> stereoLinkAttachment;
-    // NOTE: bypassAttachment intentionally omitted -- see DESIGN-IMPL-001.
-    // The BYPASS button is drawn but not APVTS-attached because the
-    // current processor has no "bypass" parameter and adding new
-    // parameters is out of scope for this pass.
+    std::unique_ptr<ButtonAttachment> bypassAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MW160Editor)
 };

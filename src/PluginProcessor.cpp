@@ -15,6 +15,7 @@ MW160Processor::MW160Processor()
     overEasyParam_ = apvts.getRawParameterValue("overEasy");
     stereoLinkParam_ = apvts.getRawParameterValue("stereoLink");
     mixParam_ = apvts.getRawParameterValue("mix");
+    bypassParam_ = apvts.getRawParameterValue("bypass");
 }
 
 MW160Processor::~MW160Processor() = default;
@@ -67,6 +68,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
         100.0f,
         juce::AudioParameterFloatAttributes().withLabel("%")));
 
+    layout.add(std::make_unique<juce::AudioParameterBool>(
+        juce::ParameterID{"bypass", 1},
+        "Bypass",
+        false));
+
     return layout;
 }
 
@@ -105,6 +111,9 @@ void MW160Processor::prepareToPlay(double sampleRate, int samplesPerBlock)
         compressor_[ch].prepare(sampleRate, samplesPerBlock);
         compressor_[ch].reset();
     }
+
+    bypassSmoother_.reset(sampleRate, 0.020); // 20 ms crossfade
+    bypassSmoother_.setCurrentAndTarget(0.0f); // start active (not bypassed)
 }
 
 void MW160Processor::releaseResources()
@@ -143,6 +152,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
     const bool overEasy = overEasyParam_->load() >= 0.5f;
     const bool stereoLink = stereoLinkParam_->load() >= 0.5f;
     const float mix = mixParam_->load();
+    const bool bypassed = bypassParam_->load() >= 0.5f;
 
     for (int ch = 0; ch < numChannels; ++ch)
     {
@@ -153,12 +163,25 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
         compressor_[ch].setMix(mix);
     }
 
+    bypassSmoother_.setTarget(bypassed ? 1.0f : 0.0f);
+
+    // When bypass is engaged or the crossfade is ramping, keep a copy of
+    // the dry input so we can blend after the compressor processes in-place.
+    // This allocation (O(blockSize)) only occurs during the ~20 ms ramp or
+    // while bypass is held; in the common active state the branch is skipped.
+    const bool needDry = bypassed || bypassSmoother_.isSmoothing();
+    juce::AudioBuffer<float> dryBuffer;
+    if (needDry)
+        dryBuffer.makeCopyOf(buffer);
+
     // Measure peak input level across all channels
     float peakInput = 0.0f;
     for (int ch = 0; ch < numChannels; ++ch)
         peakInput = std::max(peakInput, buffer.getMagnitude(ch, 0, numSamples));
 
-    // Process audio
+    // Process audio — the compressor always runs even when bypassed so
+    // that the detector, ballistics, and smoothers stay in their correct
+    // state. Disengaging bypass therefore returns to compression instantly.
     if (stereoLink && numChannels == 2)
     {
         float* dataL = buffer.getWritePointer(0);
@@ -182,6 +205,24 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
 
             for (int i = 0; i < numSamples; ++i)
                 channelData[i] = compressor_[ch].processSample(channelData[i]);
+        }
+    }
+
+    // Bypass crossfade: blend the compressor (wet) output toward the dry
+    // input over ~20 ms to prevent clicks on toggle.
+    if (needDry)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const float bypassGain = bypassSmoother_.getNextValue();
+            const float wetGain = 1.0f - bypassGain;
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                const float dry = dryBuffer.getSample(ch, i);
+                const float wet = buffer.getSample(ch, i);
+                buffer.setSample(ch, i, dry * bypassGain + wet * wetGain);
+            }
         }
     }
 
@@ -255,6 +296,11 @@ void MW160Processor::setStateInformation(const void* data, int sizeInBytes)
             }
         }
     }
+}
+
+juce::AudioProcessorParameter* MW160Processor::getBypassParameter() const
+{
+    return apvts.getParameter("bypass");
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

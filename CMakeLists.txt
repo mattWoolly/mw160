@@ -100,6 +100,7 @@ add_executable(MW160Tests
     tests/test_plugin_parameter_labels.cpp
     tests/test_parameter_smoother_block_independence.cpp
     tests/test_rms_detector_nan_guard.cpp
+    tests/test_plugin_bypass.cpp
 )
 
 target_link_libraries(MW160Tests
