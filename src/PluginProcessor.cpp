@@ -24,25 +24,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+    // Defaults chosen for a useful first impression: moderate compression
+    // rather than unity passthrough (QA-UX-012).
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"threshold", 1},
         "Threshold",
         juce::NormalisableRange<float>(-40.0f, 20.0f, 0.1f),
-        0.0f,
+        -12.0f,
         juce::AudioParameterFloatAttributes().withLabel("dBFS")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"ratio", 1},
         "Ratio",
         juce::NormalisableRange<float>(1.0f, 60.0f, 0.1f),
-        1.0f,
+        4.0f,
         juce::AudioParameterFloatAttributes().withLabel(":1")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"outputGain", 1},
         "Output Gain",
         juce::NormalisableRange<float>(-20.0f, 20.0f, 0.1f),
-        0.0f,
+        3.0f,
         juce::AudioParameterFloatAttributes().withLabel("dB")));
 
     layout.add(std::make_unique<juce::AudioParameterBool>(

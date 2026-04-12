@@ -59,6 +59,7 @@ TEST_CASE("Factory preset thresholds locked to audited dBFS values",
         { "Drum Bus Glue",   -12.0f },
         { "Bass Control",    -14.0f },
         { "Parallel Smash",  -20.0f },
+        { "Vocal Presence",  -16.0f },
         { "Gentle Leveling",  -8.0f },
         { "Brick Wall",       -6.0f },
     };

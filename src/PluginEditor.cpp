@@ -151,13 +151,16 @@ MW160Editor::MW160Editor(MW160Processor& p)
     addAndMakeVisible(presetLabel);
 
     presetBox.setTextWhenNothingSelected("Select preset...");
+    presetBox.setTooltip("Select a factory or user preset");
     refreshPresetList();
     presetBox.addListener(this);
     addAndMakeVisible(presetBox);
 
+    saveButton.setTooltip("Save current settings as a user preset");
     saveButton.onClick = [this] { onSavePreset(); };
     addAndMakeVisible(saveButton);
 
+    deleteButton.setTooltip("Delete the selected user preset");
     deleteButton.onClick = [this] { onDeletePreset(); };
     addAndMakeVisible(deleteButton);
 
@@ -196,6 +199,7 @@ MW160Editor::MW160Editor(MW160Processor& p)
     bypassButton.setHelpText("Bypass the compressor");
     addAndMakeVisible(bypassButton);
 
+    meterModeButton.setTooltip("Meter display mode: IN / OUT / GR");
     addAndMakeVisible(meterModeButton);
     meterModeButton.onModeChange = [this](MeterModeButton::Mode)
     {
@@ -477,8 +481,18 @@ void MW160Editor::onDeletePreset()
     auto& pm = processorRef.presetManager;
     const int idx = pm.getCurrentIndex();
 
-    if (idx < 0 || pm.isFactoryPreset(idx))
+    if (idx < 0)
         return;
+
+    if (pm.isFactoryPreset(idx))
+    {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::MessageBoxIconType::InfoIcon,
+            "Factory Preset",
+            "Factory presets cannot be deleted.",
+            "OK");
+        return;
+    }
 
     const auto name = pm.getPresetName(idx);
 
@@ -665,12 +679,15 @@ void MW160Editor::paint(juce::Graphics& g)
             const float yH = 176.0f * sy;
             return y0 + yH * (1.0f - t);
         };
-        const float shared_x = 54.0f * sx;
-        const float shared_w = 16.0f * sx;
-        g.setColour(inOutBright ? textBright : textDim);
+        const float shared_tickX = 51.0f * sx;  // tick mark start
+        const float shared_x    = 54.0f * sx;  // label start
+        const float shared_w    = 16.0f * sx;
+        const auto  inOutCol    = inOutBright ? textBright : textDim;
+        g.setColour(inOutCol);
         for (const auto& tk : inOutTicks)
         {
             const float yy = inOutY(tk.ref_dB);
+            g.fillRect(shared_tickX, yy - 0.5f, 3.0f * sx, 1.0f);
             g.drawText(tk.label, shared_x, yy - 6.0f, shared_w, 12.0f,
                        juce::Justification::centred);
         }
@@ -688,12 +705,16 @@ void MW160Editor::paint(juce::Graphics& g)
             const float yH = 176.0f * sy;
             return y0 + yH * t;
         };
-        const float gr_x = 144.0f * sx;
-        const float gr_w = 16.0f  * sx;
-        g.setColour(grBright ? textBright : textDim);
+        const float gr_tickX = 140.0f * sx;  // tick mark start (right edge of ladder)
+        const float gr_x    = 144.0f * sx;   // label start
+        const float gr_w    = 16.0f  * sx;
+        const auto  grCol   = grBright ? textBright : textDim;
+        g.setColour(grCol);
         for (const auto& tk : grTicks)
         {
             const float yy = grY(tk.ref_dB);
+            // Small tick mark connecting the label to the meter.
+            g.fillRect(gr_tickX, yy - 0.5f, 3.0f * sx, 1.0f);
             g.drawText(tk.label, gr_x, yy - 6.0f, gr_w, 12.0f,
                        juce::Justification::centredLeft);
         }
