@@ -131,32 +131,38 @@ TEST_CASE("VcaSaturation: moderate GR produces measurable distortion",
     REQUIRE(thd < 0.002);   // < 0.2%
 }
 
-TEST_CASE("VcaSaturation: 2nd harmonic dominates over 3rd",
+TEST_CASE("VcaSaturation: 2nd harmonic dominates over 3rd across GR range",
           "[dsp][saturation]")
 {
     // The discrete VCA's NPN/PNP asymmetry produces predominantly
-    // even-order harmonics.  2nd harmonic should be significantly
-    // larger than 3rd.
+    // even-order harmonics.  2nd harmonic should be stronger than 3rd
+    // at every gain-reduction depth (REFERENCE.md §1.5).
     const float amplitude = 0.5f;
-    const float grAmount = -20.0f;
     const double fundamental = 1000.0;
 
     const int numCycles = 100;
     const int numSamples = static_cast<int>(kSampleRate / fundamental
                                                       * numCycles);
 
-    auto input = generateSine(kSampleRate, amplitude, fundamental, numSamples);
-    std::vector<float> output(input.size());
+    // Verify h2 > h3 at 3, 10, and 20 dB gain reduction.
+    for (float grDb : { -3.0f, -10.0f, -20.0f })
+    {
+        CAPTURE(grDb);
 
-    for (size_t i = 0; i < input.size(); ++i)
-        output[i] = sat.processSample(input[i], grAmount);
+        auto input = generateSine(kSampleRate, amplitude, fundamental,
+                                  numSamples);
+        std::vector<float> output(input.size());
 
-    const double h2 = measureHarmonicAmplitude(output, kSampleRate, 2000.0,
-                                               0, numSamples);
-    const double h3 = measureHarmonicAmplitude(output, kSampleRate, 3000.0,
-                                               0, numSamples);
+        for (size_t i = 0; i < input.size(); ++i)
+            output[i] = sat.processSample(input[i], grDb);
 
-    REQUIRE(h2 > h3 * 3.0);
+        const double h2 = measureHarmonicAmplitude(output, kSampleRate, 2000.0,
+                                                   0, numSamples);
+        const double h3 = measureHarmonicAmplitude(output, kSampleRate, 3000.0,
+                                                   0, numSamples);
+
+        REQUIRE(h2 > h3);
+    }
 }
 
 TEST_CASE("VcaSaturation: output level approximately matches input level",

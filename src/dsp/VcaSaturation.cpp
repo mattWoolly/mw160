@@ -12,11 +12,11 @@ float VcaSaturation::processSample(float input, float gainReduction_dB) const
 
     // Asymmetric waveshaper producing predominantly 2nd harmonic (even-order).
     // x^2 generates 2nd harmonic; x^3 adds subtle 3rd harmonic.
-    // Coefficient ratio (0.05 vs 0.02) ensures even-order dominance,
-    // matching the NPN/PNP asymmetry measured on the discrete VCA gain
-    // element (-84 dBFS 2nd harmonic, -97 dBFS 3rd harmonic).
+    // The cubic term scales with amount² so that 3rd-harmonic content is
+    // negligible at low GR and grows only at heavy compression, keeping the
+    // spectrum 2nd-harmonic-dominant across the full GR range.
     const float x2 = input * input;
-    return input + amount * (x2 * 0.05f - input * x2 * 0.02f);
+    return input + amount * x2 * 0.05f - amount * amount * input * x2 * 0.02f;
 }
 
 } // namespace mw160
