@@ -1,49 +1,113 @@
 #include "PluginEditor.h"
+#include "gui/Palette.h"
+#include "gui/Fonts.h"
+#include "gui/Screws.h"
+#include "gui/Geometry.h"
 
 namespace
 {
-    void setupKnob(juce::Slider& slider, juce::Label& label,
-                   const juce::String& labelText,
-                   juce::AudioProcessorEditor& editor)
-    {
-        slider.setSliderStyle(juce::Slider::RotaryVerticalDrag);
-        slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 72, 18);
-        editor.addAndMakeVisible(slider);
+    // Reference canvas size -- all VISUAL_SPEC.md bounds are given at 900x360.
+    constexpr int kRefW = 900;
+    constexpr int kRefH = 360;
 
-        label.setText(labelText, juce::dontSendNotification);
-        label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(12.0f));
-        label.attachToComponent(&slider, false);
-        editor.addAndMakeVisible(label);
+    /// Map a reference-canvas rectangle to the current editor size while
+    /// preserving the 2.5:1 aspect ratio. Because the aspect ratio is
+    /// locked (VISUAL_SPEC.md §1.2), width and height always scale by the
+    /// same factor, so this is effectively a uniform scale.
+    juce::Rectangle<float> scaleR(const juce::Rectangle<float>& refRect,
+                                  int currentW, int currentH)
+    {
+        const float sx = static_cast<float>(currentW) / kRefW;
+        const float sy = static_cast<float>(currentH) / kRefH;
+        return { refRect.getX() * sx, refRect.getY() * sy,
+                 refRect.getWidth() * sx, refRect.getHeight() * sy };
     }
 
-    void setupMeterLabel(juce::Label& label, const juce::String& text,
-                         juce::Component& parent)
+    juce::Rectangle<int> scaleI(int refX, int refY, int refW, int refH,
+                                int currentW, int currentH)
+    {
+        const float sx = static_cast<float>(currentW) / kRefW;
+        const float sy = static_cast<float>(currentH) / kRefH;
+        return juce::Rectangle<int>(juce::roundToInt(refX * sx),
+                                    juce::roundToInt(refY * sy),
+                                    juce::roundToInt(refW * sx),
+                                    juce::roundToInt(refH * sy));
+    }
+
+    void setupRotary(juce::Slider& s, juce::AudioProcessorEditor& editor,
+                     const juce::String& paramName,
+                     const juce::String& helpText)
+    {
+        s.setSliderStyle(juce::Slider::RotaryVerticalDrag);
+        s.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        // VISUAL_SPEC.md §5.2 prescribes a 270 degree travel. Using the
+        // canonical 1.25*pi / 2.75*pi range gives the 7:30 -> 4:30 sweep.
+        s.setRotaryParameters(juce::MathConstants<float>::pi * 1.25f,
+                              juce::MathConstants<float>::pi * 2.75f,
+                              true);
+        s.setName(paramName);
+        s.setTitle(paramName);
+        s.setHelpText(helpText);
+        editor.addAndMakeVisible(s);
+    }
+
+    void setupKnobLabel(juce::Label& label, const juce::String& text,
+                        juce::Component& parent)
     {
         label.setText(text, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
-        label.setFont(juce::Font(10.0f).boldened());
-        label.setColour(juce::Label::textColourId, juce::Colour(0xffaaaaaa));
+        label.setFont(mw160::Fonts::withTracking(mw160::Fonts::interBold(11.0f), 1.0f));
+        label.setColour(juce::Label::textColourId, mw160::Palette::textBright);
+        parent.addAndMakeVisible(label);
+    }
+
+    void setupValueLabel(juce::Label& label, juce::Component& parent)
+    {
+        label.setJustificationType(juce::Justification::centred);
+        label.setFont(mw160::Fonts::jetBrainsMono(11.0f));
+        label.setColour(juce::Label::textColourId, mw160::Palette::textBright);
+        parent.addAndMakeVisible(label);
+    }
+
+    void setupUnitLabel(juce::Label& label, const juce::String& text,
+                        juce::Component& parent)
+    {
+        label.setText(text, juce::dontSendNotification);
+        label.setJustificationType(juce::Justification::centred);
+        label.setFont(mw160::Fonts::interRegular(9.0f));
+        label.setColour(juce::Label::textColourId, mw160::Palette::textDim);
+        parent.addAndMakeVisible(label);
+    }
+
+    void setupMeterLabel(juce::Label& label, const juce::String& text,
+                         juce::Component& parent, bool bright)
+    {
+        label.setText(text, juce::dontSendNotification);
+        label.setJustificationType(juce::Justification::centred);
+        label.setFont(mw160::Fonts::withTracking(mw160::Fonts::interBold(9.0f), 1.0f));
+        label.setColour(juce::Label::textColourId,
+                        bright ? mw160::Palette::textBright : mw160::Palette::textDim);
         parent.addAndMakeVisible(label);
     }
 
     /// Draw a circular LED indicator with optional glow.
     void drawLed(juce::Graphics& g, juce::Rectangle<float> area,
-                 juce::Colour colour, bool lit)
+                 juce::Colour colour, juce::Colour darkColour, bool lit)
     {
         if (lit)
         {
-            g.setColour(colour.withAlpha(0.2f));
-            g.fillEllipse(area.expanded(2.5f));
+            g.setColour(colour.withAlpha(0.30f));
+            g.fillEllipse(area.expanded(3.0f));
             g.setColour(colour);
+            g.fillEllipse(area);
         }
         else
         {
-            g.setColour(colour.withAlpha(0.15f));
+            g.setColour(darkColour);
+            g.fillEllipse(area);
         }
-        g.fillEllipse(area);
-        g.setColour(juce::Colour(0xff505050));
-        g.drawEllipse(area, 0.6f);
+        g.setColour(mw160::Palette::borderHairline);
+        g.drawEllipse(area, 0.8f);
     }
 }
 
@@ -52,18 +116,38 @@ namespace
 MW160Editor::MW160Editor(MW160Processor& p)
     : AudioProcessorEditor(&p), processorRef(p)
 {
+    using namespace mw160::Palette;
+
     setLookAndFeel(&customLnf);
 
-    setupKnob(thresholdSlider,  thresholdLabel,  "THRESHOLD",   *this);
-    setupKnob(ratioSlider,      ratioLabel,      "COMPRESSION", *this);
-    setupKnob(outputGainSlider, outputGainLabel, "OUTPUT",      *this);
-    setupKnob(mixSlider,        mixLabel,        "MIX",         *this);
+    // Knobs -- names drive the "fill from end" heuristic in drawRotarySlider.
+    setupRotary(thresholdSlider,  *this, "THRESHOLD", "Threshold level (dB)");
+    setupRotary(ratioSlider,      *this, "RATIO",     "Compression ratio");
+    setupRotary(outputGainSlider, *this, "OUTPUT",    "Output makeup gain (dB)");
+    setupRotary(mixSlider,        *this, "MIX",       "Dry/wet mix (%)");
+
+    setupKnobLabel(thresholdLabel,  "THRESHOLD", *this);
+    setupKnobLabel(ratioLabel,      "RATIO",     *this);
+    setupKnobLabel(outputGainLabel, "OUTPUT",    *this);
+    setupKnobLabel(mixLabel,        "MIX",       *this);
+
+    setupValueLabel(thresholdValue,  *this);
+    setupValueLabel(ratioValue,      *this);
+    setupValueLabel(outputGainValue, *this);
+    setupValueLabel(mixValue,        *this);
+
+    setupUnitLabel(thresholdUnit,  "dB",      *this);
+    setupUnitLabel(ratioUnit,      "ratio",   *this);
+    setupUnitLabel(outputGainUnit, "dB",      *this);
+    // MIX is the modern-addition control and gets a "(mix)" caption to
+    // distinguish it from the historical control set (VISUAL_SPEC.md §2.3).
+    setupUnitLabel(mixUnit,        "(mix)",   *this);
 
     // --- Preset controls ---
     presetLabel.setText("PRESET", juce::dontSendNotification);
     presetLabel.setJustificationType(juce::Justification::centredLeft);
-    presetLabel.setFont(juce::Font(10.0f).boldened());
-    presetLabel.setColour(juce::Label::textColourId, juce::Colour(0xffaaaaaa));
+    presetLabel.setFont(mw160::Fonts::withTracking(mw160::Fonts::interBold(9.0f), 1.0f));
+    presetLabel.setColour(juce::Label::textColourId, textMid);
     addAndMakeVisible(presetLabel);
 
     presetBox.setTextWhenNothingSelected("Select preset...");
@@ -77,65 +161,176 @@ MW160Editor::MW160Editor(MW160Processor& p)
     deleteButton.onClick = [this] { onDeletePreset(); };
     addAndMakeVisible(deleteButton);
 
-    addAndMakeVisible(overEasyButton);
+    versionLabel.setText(juce::String("mw160  v") + JucePlugin_VersionString,
+                         juce::dontSendNotification);
+    versionLabel.setJustificationType(juce::Justification::centredRight);
+    versionLabel.setFont(mw160::Fonts::interRegular(9.0f));
+    versionLabel.setColour(juce::Label::textColourId, textMid);
+    addAndMakeVisible(versionLabel);
+
+    // --- Switch cluster ---
+    //
+    // The KNEE, STEREO LINK, and BYPASS switches use the pill look drawn
+    // by CustomLookAndFeel::drawToggleButton. Per-switch label overrides
+    // live in the button's properties map so a single ToggleButton can
+    // carry the HARD/SOFT wording without subclassing.
+    kneeButton.setClickingTogglesState(true);
+    kneeButton.getProperties().set("offLabel", "HARD");
+    kneeButton.getProperties().set("onLabel",  "SOFT");
+    kneeButton.setTitle("Knee");
+    kneeButton.setHelpText("Knee shape: HARD or SOFT");
+    addAndMakeVisible(kneeButton);
+
+    stereoLinkButton.setClickingTogglesState(true);
+    stereoLinkButton.getProperties().set("offLabel", "LINK OFF");
+    stereoLinkButton.getProperties().set("onLabel",  "LINK ON");
+    stereoLinkButton.setTitle("Stereo Link");
+    stereoLinkButton.setHelpText("Link detector across channels");
     addAndMakeVisible(stereoLinkButton);
 
+    bypassButton.setClickingTogglesState(true);
+    bypassButton.getProperties().set("offLabel",    "ACTIVE");
+    bypassButton.getProperties().set("onLabel",     "BYPASS");
+    bypassButton.getProperties().set("bypassStyle", true);
+    bypassButton.setTitle("Bypass");
+    bypassButton.setHelpText("Bypass the compressor");
+    addAndMakeVisible(bypassButton);
+
+    addAndMakeVisible(meterModeButton);
+    meterModeButton.onModeChange = [this](MeterModeButton::Mode)
+    {
+        // Only repaint the meter label row; the ladders themselves don't
+        // change drawing based on mode in the 3-meter variant.
+        inputMeterLabel.repaint();
+        outputMeterLabel.repaint();
+        grMeterLabel.repaint();
+        // Update brightness.
+        auto apply = [](juce::Label& L, bool bright)
+        {
+            L.setColour(juce::Label::textColourId,
+                        bright ? mw160::Palette::textBright : mw160::Palette::textDim);
+        };
+        apply(inputMeterLabel,  meterModeButton.getMode() == MeterModeButton::Mode::In);
+        apply(outputMeterLabel, meterModeButton.getMode() == MeterModeButton::Mode::Out);
+        apply(grMeterLabel,     meterModeButton.getMode() == MeterModeButton::Mode::Gr);
+    };
+
+    // Meters + labels.
     addAndMakeVisible(inputMeter);
     addAndMakeVisible(outputMeter);
     addAndMakeVisible(grMeter);
-    setupMeterLabel(inputMeterLabel,  "IN",  *this);
-    setupMeterLabel(outputMeterLabel, "OUT", *this);
-    setupMeterLabel(grMeterLabel,     "GR",  *this);
+    setupMeterLabel(inputMeterLabel,  "IN",  *this, true);
+    setupMeterLabel(outputMeterLabel, "OUT", *this, false);
+    setupMeterLabel(grMeterLabel,     "GR",  *this, false);
 
-    // Create APVTS attachments after components are visible
+    // APVTS attachments. The parameter ID "overEasy" intentionally
+    // diverges from the UI label "KNEE / HARD / SOFT" -- see the comment
+    // at the APVTS parameter declaration in `PluginProcessor.cpp`.
     thresholdAttachment  = std::make_unique<SliderAttachment>(processorRef.apvts, "threshold",  thresholdSlider);
     ratioAttachment      = std::make_unique<SliderAttachment>(processorRef.apvts, "ratio",      ratioSlider);
     outputGainAttachment = std::make_unique<SliderAttachment>(processorRef.apvts, "outputGain", outputGainSlider);
     mixAttachment        = std::make_unique<SliderAttachment>(processorRef.apvts, "mix",        mixSlider);
-    overEasyAttachment   = std::make_unique<ButtonAttachment>(processorRef.apvts, "overEasy",   overEasyButton);
+    kneeAttachment       = std::make_unique<ButtonAttachment>(processorRef.apvts, "overEasy",   kneeButton);
     stereoLinkAttachment = std::make_unique<ButtonAttachment>(processorRef.apvts, "stereoLink", stereoLinkButton);
+    // NOTE: No "bypass" APVTS parameter exists in the current processor.
+    // VISUAL_SPEC.md §2.4 / §7.4 calls for a BYPASS switch, but since
+    // adding new APVTS parameters is out of scope for this pass, the
+    // bypass toggle here is presently visual only. A follow-up backlog
+    // entry (DESIGN-IMPL-001) tracks wiring it up.
 
-    setSize(600, 400);
+    // Tab focus order per VISUAL_SPEC.md §11.4:
+    // presets -> THR -> RATIO -> OUT -> MIX -> KNEE -> STEREO -> BYPASS -> meter mode.
+    presetBox.setExplicitFocusOrder(1);
+    thresholdSlider.setExplicitFocusOrder(2);
+    ratioSlider.setExplicitFocusOrder(3);
+    outputGainSlider.setExplicitFocusOrder(4);
+    mixSlider.setExplicitFocusOrder(5);
+    kneeButton.setExplicitFocusOrder(6);
+    stereoLinkButton.setExplicitFocusOrder(7);
+    bypassButton.setExplicitFocusOrder(8);
+    meterModeButton.setExplicitFocusOrder(9);
+
+    // Aspect-locked resize (VISUAL_SPEC.md §1.2).
+    aspectConstrainer_.setFixedAspectRatio(static_cast<double>(kRefW) / kRefH);
+    aspectConstrainer_.setSizeLimits(720, 288, 1440, 576);
+    setConstrainer(&aspectConstrainer_);
+    setResizable(true, true);
+
+    setSize(kRefW, kRefH);
+
+    // Keep value readouts in sync with slider state.
+    thresholdSlider.onValueChange = [this]
+    {
+        thresholdValue.setText(juce::String::formatted("%+.1f dB", thresholdSlider.getValue()),
+                               juce::dontSendNotification);
+    };
+    ratioSlider.onValueChange = [this]
+    {
+        ratioValue.setText(juce::String::formatted("%.1f:1", ratioSlider.getValue()),
+                           juce::dontSendNotification);
+    };
+    outputGainSlider.onValueChange = [this]
+    {
+        outputGainValue.setText(juce::String::formatted("%+.1f dB", outputGainSlider.getValue()),
+                                juce::dontSendNotification);
+    };
+    mixSlider.onValueChange = [this]
+    {
+        mixValue.setText(juce::String::formatted("%.0f%%", mixSlider.getValue()),
+                         juce::dontSendNotification);
+    };
+    updateValueReadouts();
+
     startTimerHz(30);
 }
 
 MW160Editor::~MW160Editor()
 {
     stopTimer();
+    setConstrainer(nullptr);
     setLookAndFeel(nullptr);
+}
+
+void MW160Editor::updateValueReadouts()
+{
+    thresholdValue .setText(juce::String::formatted("%+.1f dB",  thresholdSlider .getValue()), juce::dontSendNotification);
+    ratioValue     .setText(juce::String::formatted("%.1f:1",    ratioSlider     .getValue()), juce::dontSendNotification);
+    outputGainValue.setText(juce::String::formatted("%+.1f dB",  outputGainSlider.getValue()), juce::dontSendNotification);
+    mixValue       .setText(juce::String::formatted("%.0f%%",    mixSlider       .getValue()), juce::dontSendNotification);
 }
 
 // =============================================================================
 
 void MW160Editor::timerCallback()
 {
-    constexpr float kDecay = 0.85f;
+    constexpr float kDecayInOut = 0.85f;
+    constexpr float kDecayGR    = 0.80f;
 
     // --- Input level (snap up, decay down) ---
     const float newIn = processorRef.getMeterInputLevel();
     displayedInputLevel_ = (newIn > displayedInputLevel_)
         ? newIn
-        : std::max(newIn, displayedInputLevel_ * kDecay + (-100.0f) * (1.0f - kDecay));
+        : std::max(newIn, displayedInputLevel_ * kDecayInOut + (-100.0f) * (1.0f - kDecayInOut));
     inputMeter.setLevel(displayedInputLevel_);
 
     // --- Output level ---
     const float newOut = processorRef.getMeterOutputLevel();
     displayedOutputLevel_ = (newOut > displayedOutputLevel_)
         ? newOut
-        : std::max(newOut, displayedOutputLevel_ * kDecay + (-100.0f) * (1.0f - kDecay));
+        : std::max(newOut, displayedOutputLevel_ * kDecayInOut + (-100.0f) * (1.0f - kDecayInOut));
     outputMeter.setLevel(displayedOutputLevel_);
 
     // --- Gain reduction (snap deeper, decay toward 0) ---
     const float newGR = processorRef.getMeterGainReduction();
     displayedGR_ = (newGR < displayedGR_)
         ? newGR
-        : displayedGR_ * kDecay;
+        : displayedGR_ * kDecayGR;
     grMeter.setLevel(displayedGR_);
 
     // --- Threshold indicator LEDs ---
     const float threshold = processorRef.apvts.getRawParameterValue("threshold")->load();
-    const bool  overEasy  = processorRef.apvts.getRawParameterValue("overEasy")->load() >= 0.5f;
-    const float halfKnee  = overEasy ? 5.0f : 0.0f;  // 10 dB OverEasy knee / 2
+    const bool  softKnee  = processorRef.apvts.getRawParameterValue("overEasy")->load() >= 0.5f;
+    const float halfKnee  = softKnee ? 5.0f : 0.0f;  // 10 dB soft knee / 2
 
     const bool wasAbove = ledAbove_;
     const bool wasBelow = ledBelow_;
@@ -143,9 +338,13 @@ void MW160Editor::timerCallback()
     ledBelow_ = (displayedInputLevel_ < threshold + halfKnee);
     ledAbove_ = (displayedInputLevel_ > threshold - halfKnee);
 
-    // Only repaint the header + threshold LED area if LED state changed
+    // Only repaint the header band if LED state changed (meters repaint
+    // themselves on setLevel).
     if (wasAbove != ledAbove_ || wasBelow != ledBelow_)
-        repaint(0, 0, getWidth(), 100);
+    {
+        const int headerH = juce::roundToInt(60.0f * static_cast<float>(getHeight()) / kRefH);
+        repaint(0, 0, getWidth(), headerH);
+    }
 }
 
 // =============================================================================
@@ -157,7 +356,10 @@ void MW160Editor::comboBoxChanged(juce::ComboBox* comboBox)
 
     const int selected = presetBox.getSelectedId();
     if (selected > 0)
+    {
         processorRef.presetManager.loadPreset(selected - 1);
+        updateValueReadouts();
+    }
 }
 
 void MW160Editor::refreshPresetList()
@@ -246,118 +448,243 @@ void MW160Editor::onDeletePreset()
 
 void MW160Editor::paint(juce::Graphics& g)
 {
-    // --- Background ---
-    g.fillAll(CustomLookAndFeel::kBackground);
+    using namespace mw160::Palette;
 
-    // --- Header panel ---
-    auto headerBounds = getLocalBounds().removeFromTop(56).toFloat();
+    const float W = static_cast<float>(getWidth());
+    const float H = static_cast<float>(getHeight());
+    const float sx = W / kRefW;
+    const float sy = H / kRefH;
+
+    // --- Window background ---
+    g.fillAll(bgDeep);
+
+    // --- Body panel background ---
     {
-        juce::ColourGradient headerGrad(
-            juce::Colour(0xff2c2c2c), 0.0f, headerBounds.getY(),
-            CustomLookAndFeel::kBackground, 0.0f, headerBounds.getBottom(), false);
-        g.setGradientFill(headerGrad);
-        g.fillRect(headerBounds);
+        auto body = juce::Rectangle<float>(0.0f, 60.0f * sy, W, 240.0f * sy);
+        g.setColour(bgPanel);
+        g.fillRect(body);
     }
 
-    // Title
-    g.setColour(CustomLookAndFeel::kTextBright);
-    g.setFont(juce::Font(24.0f).boldened());
-    g.drawText("MW160", headerBounds.removeFromTop(32), juce::Justification::centred);
+    // --- Header: brushed-metal faceplate band ---
+    auto headerRect = juce::Rectangle<float>(0.0f, 0.0f, W, 60.0f * sy);
+    {
+        juce::ColourGradient hdrGrad(
+            faceplateHigh, 0.0f, headerRect.getY(),
+            faceplateLow,  0.0f, headerRect.getBottom(), false);
+        hdrGrad.addColour(0.5, faceplateMid);
+        g.setGradientFill(hdrGrad);
+        g.fillRect(headerRect);
 
-    // Subtitle
-    g.setColour(CustomLookAndFeel::kTextDim);
-    g.setFont(juce::Font(11.0f));
-    g.drawText("VCA COMPRESSOR", headerBounds, juce::Justification::centred);
+        // Brushed-metal scratches: a handful of faint horizontal lines at
+        // deterministic positions.
+        g.setColour(faceplateScratch.withAlpha(0.12f));
+        for (int i = 0; i < 9; ++i)
+        {
+            const float yy = headerRect.getY() + headerRect.getHeight() * (0.1f + i * 0.085f);
+            g.drawHorizontalLine(juce::roundToInt(yy),
+                                 headerRect.getX() + 4.0f,
+                                 headerRect.getRight() - 4.0f);
+        }
+    }
 
-    // --- Separator line ---
-    g.setColour(juce::Colour(0xff3a3a3a));
-    g.fillRect(16.0f, 56.0f, static_cast<float>(getWidth() - 32), 1.0f);
+    // --- Wordmark "mw160" ---
+    // §4.3 requires a two-pass draw for the engraved look.
+    {
+        auto wordmarkArea = juce::Rectangle<float>(64.0f * sx, 6.0f * sy, 360.0f * sx, 34.0f * sy);
+        const auto wordFont = mw160::Fonts::interBold(28.0f * sy);
 
-    // --- Threshold indicator LEDs ---
-    // Positioned to the right of the meter strip area
-    const float ledY      = 80.0f;
-    const float ledSize   = 8.0f;
-    const float ledStartX = 230.0f;
+        g.setFont(wordFont);
+        g.setColour(juce::Colours::white.withAlpha(0.12f));
+        g.drawText("mw160", wordmarkArea.translated(0.0f, 1.0f),
+                   juce::Justification::centredLeft);
+        g.setColour(textInk);
+        g.drawText("mw160", wordmarkArea, juce::Justification::centredLeft);
 
-    // BELOW led (green)
-    drawLed(g, { ledStartX, ledY, ledSize, ledSize },
-            CustomLookAndFeel::kLedGreen, ledBelow_);
-    g.setColour(ledBelow_ ? CustomLookAndFeel::kTextBright : CustomLookAndFeel::kTextDim);
-    g.setFont(juce::Font(10.0f));
-    g.drawText("BELOW", ledStartX + ledSize + 4.0f, ledY - 1.0f, 42.0f, 12.0f,
-               juce::Justification::centredLeft);
+        // Sublabel "VCA COMPRESSOR".
+        auto subArea = juce::Rectangle<float>(64.0f * sx, 38.0f * sy, 360.0f * sx, 16.0f * sy);
+        g.setFont(mw160::Fonts::withTracking(mw160::Fonts::interMedium(10.0f * sy), 2.0f));
+        g.setColour(textInk.withAlpha(0.75f));
+        g.drawText("VCA COMPRESSOR", subArea, juce::Justification::centredLeft);
+    }
 
-    // ABOVE led (red)
-    const float aboveX = ledStartX + 60.0f;
-    drawLed(g, { aboveX, ledY, ledSize, ledSize },
-            CustomLookAndFeel::kLedRed, ledAbove_);
-    g.setColour(ledAbove_ ? CustomLookAndFeel::kTextBright : CustomLookAndFeel::kTextDim);
-    g.drawText("ABOVE", aboveX + ledSize + 4.0f, ledY - 1.0f, 42.0f, 12.0f,
-               juce::Justification::centredLeft);
+    // --- Fasteners (four corner screws) ---
+    {
+        const float screwR = 5.0f * juce::jmin(sx, sy);
+        const juce::Point<float> screws[4] = {
+            { 16.0f * sx, 16.0f * sy },
+            { 16.0f * sx, 36.0f * sy },
+            { 884.0f * sx, 16.0f * sy },
+            { 884.0f * sx, 36.0f * sy }
+        };
+        for (int i = 0; i < 4; ++i)
+            mw160::Screws::drawScrew(g, screws[i], screwR, i);
+    }
 
-    // --- Knob section background panel ---
-    auto knobPanel = juce::Rectangle<float>(8.0f, 248.0f,
-                                             static_cast<float>(getWidth() - 16), 146.0f);
-    g.setColour(CustomLookAndFeel::kPanel);
-    g.fillRoundedRectangle(knobPanel, 4.0f);
-    g.setColour(juce::Colour(0xff3a3a3a));
-    g.drawRoundedRectangle(knobPanel, 4.0f, 0.8f);
+    // --- Threshold LEDs (BELOW / ABOVE) ---
+    {
+        const float ledY    = 24.0f * sy;
+        const float ledSize = 10.0f * juce::jmin(sx, sy);
+
+        // BELOW group
+        const float belowX = 448.0f * sx;
+        drawLed(g, { belowX, ledY, ledSize, ledSize },
+                ledGreen, ledGreenDark, ledBelow_);
+        g.setColour(ledBelow_ ? textInk : textInk.withAlpha(0.5f));
+        g.setFont(mw160::Fonts::withTracking(mw160::Fonts::interMedium(10.0f * sy), 1.0f));
+        g.drawText("BELOW", belowX + ledSize + 6.0f * sx, ledY - 2.0f * sy,
+                   56.0f * sx, ledSize + 4.0f * sy,
+                   juce::Justification::centredLeft);
+
+        // ABOVE group
+        const float aboveX = 548.0f * sx;
+        drawLed(g, { aboveX, ledY, ledSize, ledSize },
+                ledRed, ledRedDark, ledAbove_);
+        g.setColour(ledAbove_ ? textInk : textInk.withAlpha(0.5f));
+        g.drawText("ABOVE", aboveX + ledSize + 6.0f * sx, ledY - 2.0f * sy,
+                   56.0f * sx, ledSize + 4.0f * sy,
+                   juce::Justification::centredLeft);
+    }
+
+    // --- Header / body separator ---
+    {
+        g.setColour(borderHairline);
+        g.fillRect(8.0f * sx, 59.0f * sy, (kRefW - 16.0f) * sx, 1.0f);
+    }
+
+    // --- Meter strip panel (VISUAL_SPEC.md §2.2) ---
+    {
+        auto strip = scaleR({ 8.0f, 68.0f, 156.0f, 224.0f }, getWidth(), getHeight());
+        g.setColour(bgDeep);
+        g.fillRoundedRectangle(strip, 4.0f);
+        g.setColour(borderHairline);
+        g.drawRoundedRectangle(strip.reduced(0.5f), 4.0f, 1.0f);
+    }
+
+    // --- Knob row panel (VISUAL_SPEC.md §2.3) ---
+    {
+        auto panel = scaleR({ 184.0f, 68.0f, 520.0f, 224.0f }, getWidth(), getHeight());
+        g.setColour(surfaceLow);
+        g.fillRoundedRectangle(panel, 4.0f);
+        g.setColour(borderHairline);
+        g.drawRoundedRectangle(panel.reduced(0.5f), 4.0f, 1.0f);
+    }
+
+    // --- Switch cluster panel (VISUAL_SPEC.md §2.4) ---
+    {
+        auto panel = scaleR({ 720.0f, 68.0f, 172.0f, 224.0f }, getWidth(), getHeight());
+        g.setColour(surfaceLow);
+        g.fillRoundedRectangle(panel, 4.0f);
+        g.setColour(borderHairline);
+        g.drawRoundedRectangle(panel.reduced(0.5f), 4.0f, 1.0f);
+    }
+
+    // --- Meter scale tick labels (VISUAL_SPEC.md §6.4) ---
+    {
+        const auto tickFont = mw160::Fonts::interRegular(8.0f * juce::jmin(sx, sy));
+        g.setFont(tickFont);
+        g.setColour(textDim);
+
+        // Shared IN/OUT tick column between the two ladders.
+        struct Tick { float ref_dB; const char* label; };
+        const Tick inOutTicks[6] = {
+            { +6.0f,  "+6"  }, {  0.0f,  "0"   }, { -6.0f,  "-6"  },
+            { -12.0f, "-12" }, { -24.0f, "-24" }, { -48.0f, "-48" }
+        };
+        // Map dB to y within the IN/OUT ladder (bounds §2.2: y=96, h=176).
+        auto inOutY = [sy](float db)
+        {
+            const float t = juce::jlimit(0.0f, 1.0f, (db - (-60.0f)) / (6.0f - (-60.0f)));
+            const float y0 = 96.0f * sy;
+            const float yH = 176.0f * sy;
+            return y0 + yH * (1.0f - t);
+        };
+        const float shared_x = 54.0f * sx;
+        const float shared_w = 8.0f  * sx;
+        for (const auto& tk : inOutTicks)
+        {
+            const float yy = inOutY(tk.ref_dB);
+            g.drawText(tk.label, shared_x, yy - 6.0f, shared_w, 12.0f,
+                       juce::Justification::centred);
+        }
+
+        // GR ticks on the right of the GR ladder (§6.4).
+        const Tick grTicks[5] = {
+            { 0.0f,  "0"  }, { -3.0f,  "-3"  }, { -6.0f, "-6" },
+            { -12.0f,"-12"}, { -20.0f, "-20" }
+        };
+        auto grY = [sy](float db)
+        {
+            // TopDown: 0 dB at top, -20 dB at bottom.
+            const float t = juce::jlimit(0.0f, 1.0f, (0.0f - db) / 20.0f);
+            const float y0 = 96.0f * sy;
+            const float yH = 176.0f * sy;
+            return y0 + yH * t;
+        };
+        const float gr_x = 144.0f * sx;
+        const float gr_w = 16.0f  * sx;
+        for (const auto& tk : grTicks)
+        {
+            const float yy = grY(tk.ref_dB);
+            g.drawText(tk.label, gr_x, yy - 6.0f, gr_w, 12.0f,
+                       juce::Justification::centredLeft);
+        }
+    }
+
+    // --- Footer band (VISUAL_SPEC.md §2.5) ---
+    {
+        auto footer = juce::Rectangle<float>(0.0f, 300.0f * sy, W, 60.0f * sy);
+        juce::ColourGradient footGrad(
+            surfaceHigh, 0.0f, footer.getY(),
+            bgPanel,     0.0f, footer.getBottom(), false);
+        g.setGradientFill(footGrad);
+        g.fillRect(footer);
+
+        g.setColour(borderHairline);
+        g.fillRect(footer.getX(), footer.getY(), footer.getWidth(), 1.0f);
+    }
 }
 
 // =============================================================================
 
 void MW160Editor::resized()
 {
-    // ----- Meter strip (left-center area, below header) -----
-    const int meterTop     = 66;
-    const int meterHeight  = 160;
-    const int meterWidth   = 24;
-    const int meterGap     = 14;
-    const int labelHeight  = 14;
-    const int meterStartX  = 40;
+    const int W = getWidth();
+    const int H = getHeight();
 
-    // IN meter
-    inputMeterLabel.setBounds(meterStartX, meterTop, meterWidth, labelHeight);
-    inputMeter.setBounds(meterStartX, meterTop + labelHeight + 2, meterWidth, meterHeight);
+    // --- Meter strip: three ladders ---
+    // Bounds from VISUAL_SPEC.md §2.2.
+    inputMeterLabel .setBounds(scaleI(20,  76, 36, 14, W, H));
+    outputMeterLabel.setBounds(scaleI(60,  76, 36, 14, W, H));
+    grMeterLabel    .setBounds(scaleI(108, 76, 36, 14, W, H));
 
-    // OUT meter
-    const int outX = meterStartX + meterWidth + meterGap;
-    outputMeterLabel.setBounds(outX, meterTop, meterWidth, labelHeight);
-    outputMeter.setBounds(outX, meterTop + labelHeight + 2, meterWidth, meterHeight);
+    inputMeter .setBounds(scaleI(24,  96, 28, 176, W, H));
+    outputMeter.setBounds(scaleI(64,  96, 28, 176, W, H));
+    grMeter    .setBounds(scaleI(112, 96, 28, 176, W, H));
 
-    // GR meter
-    const int grX = outX + meterWidth + meterGap + 10;
-    grMeterLabel.setBounds(grX, meterTop, meterWidth, labelHeight);
-    grMeter.setBounds(grX, meterTop + labelHeight + 2, meterWidth, meterHeight);
+    // --- Knob row: four columns at 130 px width (§2.3) ---
+    auto placeKnob = [&](juce::Slider& s, juce::Label& top,
+                         juce::Label& value, juce::Label& unit, int colX)
+    {
+        top   .setBounds(scaleI(colX + 8,  80, 114, 16, W, H));
+        s     .setBounds(scaleI(colX + 17, 104, 96, 96, W, H));
+        value .setBounds(scaleI(colX + 8,  208, 114, 18, W, H));
+        unit  .setBounds(scaleI(colX + 8,  228, 114, 14, W, H));
+    };
+    placeKnob(thresholdSlider,  thresholdLabel,  thresholdValue,  thresholdUnit,  184);
+    placeKnob(ratioSlider,      ratioLabel,      ratioValue,      ratioUnit,      314);
+    placeKnob(outputGainSlider, outputGainLabel, outputGainValue, outputGainUnit, 444);
+    placeKnob(mixSlider,        mixLabel,        mixValue,        mixUnit,        574);
 
-    // ----- Toggle buttons (right of meters) -----
-    const int btnX = 230;
-    const int btnW = 140;
-    const int btnH = 24;
-    overEasyButton.setBounds(btnX, 102, btnW, btnH);
-    stereoLinkButton.setBounds(btnX, 130, btnW, btnH);
+    // --- Switch cluster (§2.4) ---
+    kneeButton      .setBounds(scaleI(736,  92, 140, 36, W, H));
+    stereoLinkButton.setBounds(scaleI(736, 136, 140, 36, W, H));
+    bypassButton    .setBounds(scaleI(736, 180, 140, 36, W, H));
+    meterModeButton .setBounds(scaleI(736, 232, 140, 36, W, H));
 
-    // ----- Preset controls (below toggles, right side) -----
-    const int presetY    = 168;
-    const int presetBtnW = 40;
-    const int presetGap  = 4;
-    presetLabel.setBounds(btnX, presetY, 200, 14);
-    const int boxY = presetY + 16;
-    const int boxW = getWidth() - btnX - 16 - (presetBtnW * 2) - (presetGap * 2);
-    presetBox.setBounds(btnX, boxY, boxW, btnH);
-    saveButton.setBounds(btnX + boxW + presetGap, boxY, presetBtnW, btnH);
-    deleteButton.setBounds(btnX + boxW + presetGap * 2 + presetBtnW, boxY, presetBtnW, btnH);
-
-    // ----- Knob row (bottom section) -----
-    const int knobAreaY = 254;
-    const int knobLabelSpace = 16;  // space reserved above knobs for label
-    const int knobHeight = 110;
-    auto knobArea = juce::Rectangle<int>(16, knobAreaY + knobLabelSpace,
-                                          getWidth() - 32, knobHeight);
-
-    const int knobW = knobArea.getWidth() / 4;
-    thresholdSlider.setBounds(knobArea.removeFromLeft(knobW));
-    ratioSlider.setBounds(knobArea.removeFromLeft(knobW));
-    outputGainSlider.setBounds(knobArea.removeFromLeft(knobW));
-    mixSlider.setBounds(knobArea);
+    // --- Footer (§2.5) ---
+    presetLabel  .setBounds(scaleI(16,  312,  60, 14, W, H));
+    presetBox    .setBounds(scaleI(16,  328, 540, 24, W, H));
+    saveButton   .setBounds(scaleI(564, 328,  64, 24, W, H));
+    deleteButton .setBounds(scaleI(636, 328,  64, 24, W, H));
+    versionLabel .setBounds(scaleI(708, 332, 176, 16, W, H));
 }

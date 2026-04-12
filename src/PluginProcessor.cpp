@@ -44,6 +44,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
         0.0f,
         juce::AudioParameterFloatAttributes().withLabel("dB")));
 
+    // NOTE: The APVTS parameter ID "overEasy" is retained only for
+    // state-restore compatibility with previously-saved sessions; the
+    // UI label shown in the editor is "KNEE" with states HARD / SOFT.
+    // A follow-up backlog item (tracked under QA-TM-001 / param-id
+    // migration) will migrate the ID and display name together with a
+    // versioned state-upgrade path. Do not rename this ID here.
     layout.add(std::make_unique<juce::AudioParameterBool>(
         juce::ParameterID{"overEasy", 1},
         "OverEasy",
