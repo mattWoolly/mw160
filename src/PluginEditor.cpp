@@ -351,8 +351,24 @@ void MW160Editor::comboBoxChanged(juce::ComboBox* comboBox)
     const int selected = presetBox.getSelectedId();
     if (selected > 0)
     {
-        processorRef.presetManager.loadPreset(selected - 1);
-        updateValueReadouts();
+        if (processorRef.presetManager.loadPreset(selected - 1))
+        {
+            updateValueReadouts();
+        }
+        else
+        {
+            // Revert combo to the previous valid selection.
+            const int prevIdx = processorRef.presetManager.getCurrentIndex();
+            presetBox.setSelectedId(prevIdx >= 0 ? prevIdx + 1 : 0,
+                                    juce::dontSendNotification);
+
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::MessageBoxIconType::WarningIcon,
+                "Preset Load Error",
+                "The selected preset could not be loaded. "
+                "The file may be corrupt or incompatible.",
+                "OK");
+        }
     }
 }
 
@@ -399,13 +415,61 @@ void MW160Editor::onSavePreset()
             {
                 auto name = aw->getTextEditorContents("name").trim();
                 if (name.isNotEmpty())
-                {
-                    safeThis->processorRef.presetManager.saveUserPreset(name);
-                    safeThis->refreshPresetList();
-                }
+                    safeThis->trySavePreset(name, false);
             }
             delete aw;
         }));
+}
+
+void MW160Editor::trySavePreset(const juce::String& name, bool allowOverwrite)
+{
+    auto result = processorRef.presetManager.saveUserPreset(name, allowOverwrite);
+
+    switch (result)
+    {
+        case PresetManager::SaveResult::Ok:
+            refreshPresetList();
+            break;
+
+        case PresetManager::SaveResult::InvalidName:
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::MessageBoxIconType::WarningIcon,
+                "Invalid Name",
+                "The preset name contains invalid characters. "
+                "Avoid path separators, reserved system names, "
+                "and characters like < > : \" | ? *",
+                "OK");
+            break;
+
+        case PresetManager::SaveResult::AlreadyExists:
+        {
+            auto* confirm = new juce::AlertWindow(
+                "Overwrite Preset",
+                "A preset named \"" + name + "\" already exists. Overwrite it?",
+                juce::MessageBoxIconType::WarningIcon);
+            confirm->addButton("Overwrite", 1);
+            confirm->addButton("Cancel", 0);
+
+            juce::Component::SafePointer<MW160Editor> safeThis(this);
+            confirm->enterModalState(true, juce::ModalCallbackFunction::create(
+                [safeThis, confirm, name](int r)
+                {
+                    if (safeThis != nullptr && r == 1)
+                        safeThis->trySavePreset(name, true);
+                    delete confirm;
+                }));
+            break;
+        }
+
+        case PresetManager::SaveResult::WriteFailed:
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::MessageBoxIconType::WarningIcon,
+                "Save Failed",
+                "The preset could not be written to disk. "
+                "Check that the preset folder is writable.",
+                "OK");
+            break;
+    }
 }
 
 void MW160Editor::onDeletePreset()

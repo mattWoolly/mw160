@@ -1,7 +1,27 @@
 #include "PresetManager.h"
 
+namespace
+{
+juce::File defaultPresetDirectory()
+{
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+               .getChildFile("MW Audio")
+               .getChildFile("MW160")
+               .getChildFile("Presets");
+}
+} // namespace
+
 PresetManager::PresetManager(juce::AudioProcessorValueTreeState& apvts)
-    : apvts_(apvts)
+    : apvts_(apvts),
+      presetDir_(defaultPresetDirectory())
+{
+    scanUserPresets();
+}
+
+PresetManager::PresetManager(juce::AudioProcessorValueTreeState& apvts,
+                             const juce::File& presetDir)
+    : apvts_(apvts),
+      presetDir_(presetDir)
 {
     scanUserPresets();
 }
@@ -27,17 +47,23 @@ bool PresetManager::isFactoryPreset(int index) const
     return index >= 0 && index < mw160::kNumFactoryPresets;
 }
 
-void PresetManager::loadPreset(int index)
+bool PresetManager::loadPreset(int index)
 {
     if (index < 0 || index >= getNumPresets())
-        return;
-
-    currentIndex_ = index;
+        return false;
 
     if (index < mw160::kNumFactoryPresets)
+    {
         applyFactoryPreset(index);
-    else
-        loadUserPreset(index - mw160::kNumFactoryPresets);
+        currentIndex_ = index;
+        return true;
+    }
+
+    if (!loadUserPreset(index - mw160::kNumFactoryPresets))
+        return false;
+
+    currentIndex_ = index;
+    return true;
 }
 
 void PresetManager::applyFactoryPreset(int factoryIndex)
@@ -58,31 +84,76 @@ void PresetManager::applyFactoryPreset(int factoryIndex)
         param->setValueNotifyingHost(param->convertTo0to1(p.mix));
 }
 
-void PresetManager::loadUserPreset(int userIndex)
+bool PresetManager::loadUserPreset(int userIndex)
 {
     if (userIndex < 0 || userIndex >= userPresetFiles_.size())
-        return;
+        return false;
 
     const auto& file = userPresetFiles_[userIndex];
     auto xml = juce::parseXML(file);
 
-    if (xml != nullptr && xml->hasTagName(apvts_.state.getType()))
-        apvts_.replaceState(juce::ValueTree::fromXml(*xml));
+    if (xml == nullptr || !xml->hasTagName(apvts_.state.getType()))
+        return false;
+
+    apvts_.replaceState(juce::ValueTree::fromXml(*xml));
+    return true;
 }
 
-void PresetManager::saveUserPreset(const juce::String& name)
+// static
+bool PresetManager::isValidPresetName(const juce::String& name)
 {
+    if (name.isEmpty())
+        return false;
+
+    // Reject path traversal and current-directory references
+    if (name == ".." || name == ".")
+        return false;
+
+    // Reject path separators
+    if (name.containsChar('/') || name.containsChar('\\'))
+        return false;
+
+    // Reject characters invalid in filenames across platforms
+    const char illegal[] = { '<', '>', ':', '"', '|', '?', '*' };
+    for (auto c : illegal)
+        if (name.containsChar(c))
+            return false;
+
+    // Reject reserved Windows device names (case-insensitive)
+    auto upper = name.toUpperCase();
+    static const juce::StringArray reserved {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
+    if (reserved.contains(upper))
+        return false;
+
+    return true;
+}
+
+PresetManager::SaveResult
+PresetManager::saveUserPreset(const juce::String& name, bool allowOverwrite)
+{
+    if (!isValidPresetName(name))
+        return SaveResult::InvalidName;
+
     auto dir = getUserPresetDirectory();
 
     if (!dir.isDirectory())
         dir.createDirectory();
 
     auto file = dir.getChildFile(name + ".xml");
+
+    if (file.existsAsFile() && !allowOverwrite)
+        return SaveResult::AlreadyExists;
+
     auto state = apvts_.copyState();
+    state.setProperty("pluginVersion", 1, nullptr);
     auto xml = state.createXml();
 
-    if (xml != nullptr)
-        xml->writeTo(file);
+    if (xml == nullptr || !xml->writeTo(file))
+        return SaveResult::WriteFailed;
 
     scanUserPresets();
 
@@ -95,6 +166,8 @@ void PresetManager::saveUserPreset(const juce::String& name)
             break;
         }
     }
+
+    return SaveResult::Ok;
 }
 
 void PresetManager::deleteUserPreset(int index)
@@ -129,8 +202,5 @@ void PresetManager::scanUserPresets()
 
 juce::File PresetManager::getUserPresetDirectory() const
 {
-    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-               .getChildFile("MW Audio")
-               .getChildFile("MW160")
-               .getChildFile("Presets");
+    return presetDir_;
 }
