@@ -31,7 +31,7 @@ float GainComputer::computeGainReduction(float inputLevel_dB,
         return excess * slope;
     }
 
-    // Soft knee (OverEasy) — Giannoulis et al. quadratic interpolation
+    // Soft knee — Giannoulis et al. quadratic interpolation
     const float halfKnee = kneeWidth_dB / 2.0f;
     const float kneeBottom = threshold_dB - halfKnee;
     const float kneeTop    = threshold_dB + halfKnee;

@@ -45,7 +45,7 @@ feedback. Existing 110-test Catch2 suite passes; pluginval at strictness
 **Owner:** owner:dev-agent
 **Context / repro:** `MW160Processor::processBlock` calls
 `compressor_[ch].setThreshold(...)`, `setRatio(...)`, `setOutputGain(...)`,
-`setOverEasy(...)`, `setMix(...)` once at the top of every block, regardless
+`setSoftKnee(...)`, `setMix(...)` once at the top of every block, regardless
 of whether the value has changed. `ParameterSmoother::setTarget` only
 early-outs when `newTarget == target_` **and** `countdown_ == 0`. While the
 smoother is mid-ramp (`countdown_ > 0`), an identical-target call still
@@ -162,7 +162,7 @@ coverage to `test_compressor_integration.cpp`.
 **Context / repro:** REFERENCE.md §2.2 lists Bypass as a required control:
 "sample-accurate, with no latency discrepancy between bypassed and engaged
 states. Bypass must not produce a click." `MW160Processor::createParameterLayout`
-declares only six parameters: `threshold`, `ratio`, `outputGain`, `overEasy`,
+declares only six parameters: `threshold`, `ratio`, `outputGain`, `softKnee`,
 `stereoLink`, `mix`. There is no bypass parameter and no
 `getBypassParameter()` override on `MW160Processor`. Most DAWs use a
 plugin's bypass parameter to coordinate sample-accurate bypass with their
@@ -421,15 +421,15 @@ trademark scrub. Listing here only because the topology gap (QA-DSP-004)
 references the same files and a fix to one will touch the other:
 
 - `src/dsp/Compressor.h:14-15` — comment names a brand and model.
-- `src/dsp/Compressor.cpp` — no direct brand strings, but `setOverEasy`
-  and `kOverEasyKneeWidth_dB` use a trademarked feature name.
+- `src/dsp/Compressor.cpp` — no direct brand strings, but `setSoftKnee`
+  and `kSoftKneeWidth_dB` use a trademarked feature name.
 - `src/dsp/RmsDetector.h:7-9` — comment names a brand and model.
 - `src/dsp/Ballistics.h:7,38` and `src/dsp/Ballistics.cpp:29` — comments
   reference a brand and model, and named published specs.
 - `src/dsp/VcaSaturation.h` and `.cpp` — comments name a brand of VCA and
   a third-party measurement source by name.
 - `src/dsp/GainComputer.h:5-17` — comment names a brand and a feature.
-- `src/PluginProcessor.cpp:48-50` — `overEasy` parameter ID and display
+- `src/PluginProcessor.cpp:48-50` — `softKnee` parameter ID and display
   name.
 
 No action requested from QA-DSP; cross-referenced for awareness so the fix

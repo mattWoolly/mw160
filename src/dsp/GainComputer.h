@@ -2,7 +2,7 @@
 
 namespace mw160 {
 
-/// Gain computer for the DBX 160 compression pipeline.
+/// Gain computer for the classic VCA compression pipeline.
 /// Converts an input level (dB) to a gain reduction value (dB) given
 /// threshold, ratio, and optional knee width parameters.
 ///
@@ -14,8 +14,8 @@ namespace mw160 {
 ///                                      the knee)
 ///
 /// Knee width semantics:
-///   0.0       = hard knee (original DBX 160 behaviour)
-///   >0.0      = soft knee / OverEasy (quadratic interpolation per Giannoulis et al.)
+///   0.0       = hard knee (original behaviour)
+///   >0.0      = soft knee (quadratic interpolation per Giannoulis et al.)
 ///
 /// Pure C++ — no JUCE dependency — no heap allocation.
 class GainComputer

@@ -26,7 +26,7 @@ float Ballistics::processSample(float targetGainReduction_dB)
         // shorter effective time constant (faster attack). As the filter
         // converges and the difference shrinks, the attack naturally slows —
         // producing the nonlinear attack trajectory characteristic of the
-        // DBX 160: fast onset that decelerates near final GR.
+        // Classic VCA compressor: fast onset that decelerates near final GR.
         const double magnitude = -diff;
         const double attackTime = kBaseAttackTime_s / std::max(1.0, std::pow(magnitude, kAttackExponent));
         const double coeff = std::exp(-1.0 / (attackTime * sampleRate_));

@@ -223,14 +223,12 @@ MW160Editor::MW160Editor(MW160Processor& p)
     setupMeterLabel(outputMeterLabel, "OUT", *this, false);
     setupMeterLabel(grMeterLabel,     "GR",  *this, false);
 
-    // APVTS attachments. The parameter ID "overEasy" intentionally
-    // diverges from the UI label "KNEE / HARD / SOFT" -- see the comment
-    // at the APVTS parameter declaration in `PluginProcessor.cpp`.
+    // APVTS attachments.
     thresholdAttachment  = std::make_unique<SliderAttachment>(processorRef.apvts, "threshold",  thresholdSlider);
     ratioAttachment      = std::make_unique<SliderAttachment>(processorRef.apvts, "ratio",      ratioSlider);
     outputGainAttachment = std::make_unique<SliderAttachment>(processorRef.apvts, "outputGain", outputGainSlider);
     mixAttachment        = std::make_unique<SliderAttachment>(processorRef.apvts, "mix",        mixSlider);
-    kneeAttachment       = std::make_unique<ButtonAttachment>(processorRef.apvts, "overEasy",   kneeButton);
+    kneeAttachment       = std::make_unique<ButtonAttachment>(processorRef.apvts, "softKnee",   kneeButton);
     stereoLinkAttachment = std::make_unique<ButtonAttachment>(processorRef.apvts, "stereoLink", stereoLinkButton);
     bypassAttachment     = std::make_unique<ButtonAttachment>(processorRef.apvts, "bypass",     bypassButton);
 
@@ -325,7 +323,7 @@ void MW160Editor::timerCallback()
 
     // --- Threshold indicator LEDs ---
     const float threshold = processorRef.apvts.getRawParameterValue("threshold")->load();
-    const bool  softKnee  = processorRef.apvts.getRawParameterValue("overEasy")->load() >= 0.5f;
+    const bool  softKnee  = processorRef.apvts.getRawParameterValue("softKnee")->load() >= 0.5f;
     const float halfKnee  = softKnee ? 5.0f : 0.0f;  // 10 dB soft knee / 2
 
     const bool wasAbove = ledAbove_;

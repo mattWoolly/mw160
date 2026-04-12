@@ -79,7 +79,7 @@ TEST_CASE("No-alloc: processSample makes zero heap allocations",
     comp.setThreshold(-20.0f);
     comp.setRatio(4.0f);
     comp.setOutputGain(3.0f);
-    comp.setOverEasy(false);
+    comp.setSoftKnee(false);
     comp.setMix(100.0f);
 
     // Pre-warm the compressor so any lazy init has happened
@@ -110,7 +110,7 @@ TEST_CASE("No-alloc: processSampleLinked makes zero heap allocations",
     compL.setThreshold(-20.0f);  compR.setThreshold(-20.0f);
     compL.setRatio(4.0f);        compR.setRatio(4.0f);
     compL.setOutputGain(0.0f);   compR.setOutputGain(0.0f);
-    compL.setOverEasy(true);     compR.setOverEasy(true);
+    compL.setSoftKnee(true);     compR.setSoftKnee(true);
     compL.setMix(100.0f);        compR.setMix(100.0f);
 
     // Pre-warm
@@ -152,7 +152,7 @@ TEST_CASE("No-alloc: parameter changes during processing cause no allocations",
     comp.setThreshold(-20.0f);
     comp.setRatio(4.0f);
     comp.setOutputGain(0.0f);
-    comp.setOverEasy(false);
+    comp.setSoftKnee(false);
     comp.setMix(100.0f);
 
     // Pre-warm
@@ -169,7 +169,7 @@ TEST_CASE("No-alloc: parameter changes during processing cause no allocations",
             comp.setThreshold(-20.0f + static_cast<float>(block % 10));
             comp.setRatio(2.0f + static_cast<float>(block % 8));
             comp.setOutputGain(static_cast<float>(block % 6) - 3.0f);
-            comp.setOverEasy(block % 2 == 0);
+            comp.setSoftKnee(block % 2 == 0);
             comp.setMix(50.0f + static_cast<float>(block % 50));
 
             for (int i = 0; i < 512; ++i)

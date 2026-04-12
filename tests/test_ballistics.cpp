@@ -220,7 +220,7 @@ TEST_CASE("Ballistics: GR never overshoots target during attack", "[dsp][ballist
     }
 }
 
-TEST_CASE("Ballistics: matches published 160A attack specs approximately", "[dsp][ballistics]")
+TEST_CASE("Ballistics: matches published reference attack specs approximately", "[dsp][ballistics]")
 {
     // Published specs:
     // 10 dB GR in 15 ms

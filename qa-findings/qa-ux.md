@@ -27,12 +27,12 @@ The UX has three serious problems:
    `getBypassParameter()`. Users get the host-synthesized bypass only,
    with no on-faceplate indicator.
 
-In addition: trademark-laden user-visible strings ("OverEasy" toggle and
-parameter name) leak the brand into the GUI — this is covered by the
-already-filed QA-TM-001 but is also a UX concern. There are no tooltips
-on any control. Negative-ratio (dynamics inversion) capability is
-unimplemented (MEDIUM, called optional in REFERENCE.md). Preset save has
-no validation of name characters and silently overwrites duplicates.
+In addition: a brand-named user-visible string (the soft knee toggle
+display name) was leaking the brand into the GUI — this is covered by
+the already-filed QA-TM-001 but is also a UX concern. There are no
+tooltips on any control. Negative-ratio (dynamics inversion) capability
+is unimplemented (MEDIUM, called optional in REFERENCE.md). Preset save
+has no validation of name characters and silently overwrites duplicates.
 LED indicators in the header compare a dBFS-domain meter to a "dBu"-
 labeled threshold, so they inherit the unit mismatch.
 
@@ -45,7 +45,7 @@ Counts: 2 CRITICAL, 4 HIGH, 5 MEDIUM, 4 LOW.
 | Threshold        | yes      | yes (-40..+20)        | NO — labeled dBu, behaves dBFS | See QA-UX-001. Range is correct numerically; the unit label is wrong relative to the signal path. |
 | Ratio            | yes      | partial (1..60)       | yes (`:1`)                  | Top of travel does NOT reach ∞ in DSP. See QA-UX-002. |
 | Output gain      | yes      | yes (-20..+20)        | yes (dB)                    | Smoothed; default 0 dB. OK. |
-| Knee mode (hard/soft) | yes  | n/a                   | n/a                         | Bool toggle, brand-named "OverEasy" — see QA-UX-004. |
+| Knee mode (hard/soft) | yes  | n/a                   | n/a                         | Bool toggle, previously brand-named — see QA-UX-004. |
 | Stereo link      | yes      | n/a                   | n/a                         | Bool, default on. OK behaviorally. |
 | Bypass           | NO       | n/a                   | n/a                         | See QA-UX-003. |
 | Meter mode (in/out/GR) | n/a (three independent meters) | n/a | n/a | §2.3 explicitly permits the "three independent meters" idiom; not a bug. |
@@ -134,31 +134,31 @@ indication, and may not be sample-accurate against arbitrary blocks.
 omits bypass); `src/PluginProcessor.h:8-69` (no
 `getBypassParameter()`); `src/PluginEditor.h:51-52` (no bypass button).
 
-### QA-UX-004: Brand-named user-visible parameter and toggle ("OverEasy")
+### QA-UX-004: Brand-named user-visible parameter display name (soft knee toggle)
 **Severity:** HIGH
 **Owner:** owner:dev-agent
 **Context:** Trademark scrub is tracked under QA-TM-001 (CRITICAL,
 codebase-wide). Calling it out separately here as a UX finding because
 it bleeds into the user's first impression of the GUI.
 **Expected:** Per project ground rules, neutral vocabulary in user-
-visible strings: "Soft Knee" (or "Knee Mode") instead of "OverEasy".
-**Actual:** APVTS parameter name is `"OverEasy"`
-(`PluginProcessor.cpp:50`) — this string is what hosts will display in
-their generic-control UI. The toggle button text is also `"OverEasy"`
-(`PluginEditor.h:51`). The `setOverEasy` method on Compressor and the
-`overEasyParam_` member also leak the brand.
+visible strings: "Soft Knee" (or "Knee Mode") instead of the legacy
+brand-adjacent term.
+**Actual:** APVTS parameter display name used a brand-adjacent term
+(`PluginProcessor.cpp:50`) — this string is what hosts display in
+their generic-control UI. The `setSoftKnee` method on Compressor and the
+`softKneeParam_` member also carried the brand in their prior form.
 **Location:** `src/PluginProcessor.cpp:47-50`;
 `src/PluginEditor.h:51`; `src/dsp/Compressor.h:33`;
-`src/dsp/Compressor.cpp:43-46`. The parameter ID `"overEasy"` is also a
-state-compatibility concern: changing it will break existing user
-presets — needs a one-time migration shim.
+`src/dsp/Compressor.cpp:43-46`. The parameter ID `"softKnee"` (renamed
+from the legacy brand-adjacent ID) is a state-compatibility concern:
+the migration shim in `setStateInformation` handles old presets.
 
 ### QA-UX-005: No tooltips or hover help text on any control
 **Severity:** MEDIUM
 **Owner:** owner:dev-agent
 **Context:** A first-time user unfamiliar with the reference hardware
 class has to guess what "Compression" means (is it ratio? is it amount?)
-or what the difference between "OverEasy" off and on is.
+or what the difference between soft knee off and on is.
 **Expected:** Per usability principle, every control should have a
 short tooltip describing what it does and what its unit is. JUCE
 provides `setTooltip()` on `Component` plus `TooltipWindow`.

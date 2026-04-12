@@ -1,24 +1,24 @@
-# DBX 160 Hardware Reference
+# VCA Compressor Hardware Reference
 
 ## Model Lineage
 
 | Model | Year | VCA | Detector | Knee | Notes |
 |-------|------|-----|----------|------|-------|
-| 160 VU | 1976 | 200 "silver can" (7-transistor discrete) | 207/208 discrete | Hard only | Original. VU meter. |
-| 161 | 1976 | 200 "silver can" | 207/208 | Hard only | Budget 160, simpler output stage. |
-| 162 | 1978 | 210 (4-transistor) | Dual RMS | Hard only | Stereo linked pair. |
-| 165/165A | 1978 | 202 "black can" (8-transistor) | IC | OverEasy introduced | First soft knee in the dbx line. |
-| 160X | 1982 | IC (2152/THAT 2159) | IC | Hard + OverEasy | First IC VCA in 160 series. LED meters. |
-| 160XT | ~1984 | IC | IC | Hard + OverEasy | Added balanced XLR output. |
-| 160A | ~1990 | IC | IC | Hard + OverEasy | SMT PCB. Negative ratios (Infinity+). Current production. |
-| 160S | ~1993 | V8 (32-transistor discrete, potted) | -- | Hard + OverEasy + Auto | Premium. Jensen transformers. Manual A/R. |
-| 160SL | ~2000 | V8 | -- | Hard + OverEasy + AutoVelocity | Flagship. |
+| Original reference compressor | 1976 | 200 "silver can" (7-transistor discrete) | 207/208 discrete | Hard only | Original. VU meter. |
+| Model 161 | 1976 | 200 "silver can" | 207/208 | Hard only | Budget original, simpler output stage. |
+| Model 162 | 1978 | 210 (4-transistor) | Dual RMS | Hard only | Stereo linked pair. |
+| Model 165/165A | 1978 | 202 "black can" (8-transistor) | IC | Soft knee introduced | First soft knee in the reference line. |
+| reference hardware (X revision) | 1982 | IC (2152/THAT 2159) | IC | Hard + soft knee | First IC VCA in reference series. LED meters. |
+| reference hardware (XT revision) | ~1984 | IC | IC | Hard + soft knee | Added balanced XLR output. |
+| reference hardware (A model) | ~1990 | IC | IC | Hard + soft knee | SMT PCB. Negative ratios (Infinity+). Current production. |
+| reference hardware (S revision) | ~1993 | V8 (32-transistor discrete, potted) | -- | Hard + soft knee + Auto | Premium. Jensen transformers. Manual A/R. |
+| reference hardware (SL revision) | ~2000 | V8 | -- | Hard + soft knee + AutoVelocity | Flagship. |
 
-**Primary emulation target:** The original 160 VU character (discrete Blackmer 200 VCA), with the 160A's control set (OverEasy toggle, Infinity+ ratios) as the UI reference, since the 160A is the most commonly referenced unit in modern production.
+**Primary emulation target:** The original reference compressor character (discrete VCA gain cell, Model 200), with the later revision's control set (soft knee toggle, Infinity+ ratios) as the UI reference, since the later revision (A model) is the most commonly referenced unit in modern production.
 
 ---
 
-## Signal Path (Original 160 VU)
+## Signal Path (Original Reference Compressor)
 
 ```
 Balanced Input
@@ -29,7 +29,7 @@ Input Stage (TL082 differential amp, -6 dB gain)
     +---> Sidechain tap (to RMS detector)
     |
     v
-Blackmer 200 VCA (current-in / current-out)
+Discrete VCA gain cell, Model 200 (current-in / current-out)
     |
     v
 Transimpedance Amplifier (current-to-voltage, JFET op-amp)
@@ -45,11 +45,11 @@ XLR Output (ground-canceling, NOT true balanced)
 
 - The VCA operates in the **current domain** -- signal enters as current and exits as current. External op-amp stages handle V-to-I and I-to-V conversion.
 - The output is single-ended with a ground-canceling driver (pin 3 cancels ground hum on pin 1). Not a true differential balanced output.
-- The 161 omits the push-pull output transistors; the transimpedance amp doubles as the output driver.
+- The Model 161 omits the push-pull output transistors; the transimpedance amp doubles as the output driver.
 
 ---
 
-## Blackmer Gain Cell (VCA)
+## Discrete VCA Gain Cell
 
 ### Topology
 Four-transistor push-pull core: two complementary bipolar current mirrors (NPN lower, PNP upper). Performs **log-antilog** gain control via the Shockley equation:
@@ -71,12 +71,12 @@ The seven-transistor Model 200 adds three transistors for biasing and error corr
 - Control port sensitivity: 1 mV of noise on control port produces ~4% modulation (requires very clean control voltage)
 
 ### Nonlinearities
-Three sources of distortion in the Blackmer VCA:
+Three sources of distortion in the discrete VCA gain cell:
 1. **Logarithming error** from finite parasitic resistances in the transistors
 2. **Asymmetry** between the NPN and PNP transistor pairs (even-order harmonics)
 3. **Nonlinearity** of the input voltage-to-current converter (A1 op-amp stage)
 
-The original Model 200 has measurably higher distortion than later IC versions (2150 series at 0.01%, 2001 at <0.001%). This is widely credited as the source of the "warm, grainy" character. Cytomic measured the discrete Blackmer at -84 dBFS 2nd harmonic, -97 dBFS 3rd harmonic -- predominantly even-order.
+The original Model 200 has measurably higher distortion than later IC versions (2150 series at 0.01%, 2001 at <0.001%). This is widely credited as the source of the "warm, grainy" character. Cytomic measured the discrete VCA gain cell at -84 dBFS 2nd harmonic, -97 dBFS 3rd harmonic -- predominantly even-order.
 
 ### Manufacturing note
 Discrete transistors were individually matched in an oven, then thermally coupled with a conductive ceramic block inside a sealed metal can. Temperature drift causes gain drift (inverse relationship).
@@ -96,7 +96,7 @@ The sidechain derives its signal from the **input** (before the VCA), not the ou
 
 ### Detection: True RMS (CONFIRMED)
 
-The Blackmer RMS detector (207/208) is the **first successful commercialized log-domain filter** (1971 invention).
+The log-domain RMS detector (207/208) is the **first successful commercialized log-domain filter** (1971 invention).
 
 **How it works:**
 1. Log conversion is performed **before** rectification, using diode-connected transistors
@@ -106,7 +106,7 @@ The Blackmer RMS detector (207/208) is the **first successful commercialized log
 
 This gives true RMS response -- insensitive to waveform shape and phase, responding to actual signal energy content.
 
-### Sidechain signal flow (160 VU)
+### Sidechain signal flow (original reference compressor)
 
 1. Input signal tapped to RMS detector (207/208 module)
 2. Detector outputs positive DC voltage proportional to log(RMS level)
@@ -115,16 +115,16 @@ This gives true RMS response -- insensitive to waveform shape and phase, respond
 5. **Ratio control** sets the gain of the sidechain path (how much detected level change reaches the VCA)
 6. Final op-amp provides makeup gain offset before the VCA control port
 
-### Timing component values (160 VU)
+### Timing component values (original reference compressor)
 - **22 uF capacitor** with **909K timing resistor** in the RMS detector smoothing circuit
 
 ---
 
 ## Attack and Release (Program-Dependent)
 
-The DBX 160 has **NO user-adjustable attack or release controls** (original through 160A). Timing adapts automatically to program material.
+The classic VCA compressor has **NO user-adjustable attack or release controls** (original through later revision). Timing adapts automatically to program material.
 
-### Published specifications (from 160A datasheet)
+### Published specifications (from reference hardware datasheet)
 
 **Attack:**
 | Gain reduction | Time |
@@ -157,14 +157,14 @@ This is NOT a simple one-pole RC filter -- the time constant is signal-dependent
 
 ## Compression Characteristics
 
-### Knee: Hard (original 160 VU)
+### Knee: Hard (original reference compressor)
 Below threshold: signal passes uncompressed. Above threshold: full ratio applied immediately. No transition zone.
 
-OverEasy (soft knee) was introduced in the 165 (1978) and added to 160X/160A as a switchable option.
+Soft knee was introduced in the Model 165 (1978) and added to later revisions (X and A models) as a switchable option.
 
 ### Ratio range
-- 160 VU: 1:1 to infinity:1
-- 160A: 1:1 through infinity:1 to negative ratios (-1:1) -- the "Infinity+" mode where increasing input above threshold causes decreasing output (dynamics inversion)
+- Original reference compressor: 1:1 to infinity:1
+- Later revision (A model): 1:1 through infinity:1 to negative ratios (-1:1) -- the "Infinity+" mode where increasing input above threshold causes decreasing output (dynamics inversion)
 
 ### How ratio is implemented
 The compression ratio is set by the **gain of the sidechain path**:
@@ -179,19 +179,19 @@ Over 60 dB.
 
 ## Front Panel Controls
 
-All 160/160X/160XT/160A models share the same **three-knob** philosophy:
+All reference compressor models (original through later revisions) share the same **three-knob** philosophy:
 
 | Control | Range | Function |
 |---------|-------|----------|
-| **Threshold** | -40 to +20 dBu (160A) | Level above which compression engages |
-| **Compression (Ratio)** | 1:1 to Infinity:1 (to -1:1 on 160A) | Compression ratio |
+| **Threshold** | -40 to +20 dBu (later revision) | Level above which compression engages |
+| **Compression (Ratio)** | 1:1 to Infinity:1 (to -1:1 on later revision) | Compression ratio |
 | **Output Gain** | -20 to +20 dB | Post-compression makeup gain |
 
 Additional controls:
-- **OverEasy button** (160X/160A): Toggles soft-knee mode
+- **Soft knee button** (X revision/later revision): Toggles soft-knee mode
 - **Meter switch**: Input / Output / Gain Reduction display
-- **Above/Below threshold LEDs**: Green (below), amber (OverEasy zone), red (above)
-- **Stereo link** (160A): Front panel button, requires strapping cable
+- **Above/Below threshold LEDs**: Green (below), amber (soft knee zone), red (above)
+- **Stereo link** (later revision): Front panel button, requires strapping cable
 
 **Output gain is independent of threshold** -- adjusting one does not affect the other.
 
@@ -199,8 +199,8 @@ Additional controls:
 
 ## Operating Levels and Calibration
 
-| Parameter | 160 VU | 160A |
-|-----------|--------|------|
+| Parameter | Original reference compressor | Later revision (A model) |
+|-----------|-------------------------------|--------------------------|
 | Nominal level (0 VU) | +4 dBu | +4 dBu |
 | Max balanced output | +26 dBu | +24 dBm |
 | Headroom above nominal | ~20-22 dB | ~20 dB |
@@ -215,14 +215,14 @@ Additional controls:
 
 ## Metering
 
-### 160 VU
+### Original reference compressor (VU model)
 - Analog VU meter, illuminated, full 60 dB range
 - Switchable: Input level / Output level / Gain reduction
 - Factory calibration: 0 VU = +4 dBu
 - Rear panel trimmer to recalibrate 0 VU reference (+10 to -10 dBu range)
 - Standard VU ballistics: 300 ms integration time (shows quasi-average, not peaks)
 
-### 160X/160A
+### Later revisions (X and A models)
 - 19-segment LED array: switchable input or output level (-40 to +20 dB)
 - 12-segment LED array: gain reduction display (0 to -40 dB)
 
@@ -230,7 +230,7 @@ Additional controls:
 
 ## Sonic Character
 
-### What makes the 160 sound "punchy"
+### What makes the classic VCA compressor sound "punchy"
 
 1. **Hard knee**: Abrupt compression onset emphasizes the leading edge of transients -- the very front of a drum hit passes through before the compressor clamps, creating an enhanced attack followed by controlled sustain.
 
@@ -242,7 +242,7 @@ Additional controls:
 
 5. **RMS detection**: Responds to signal energy rather than peaks, producing compression that tracks perceived loudness. Does not react to every peak, which preserves dynamic texture.
 
-6. **Discrete VCA coloration**: The Model 200's slightly higher distortion (compared to later IC VCAs) adds warmth and "graininess" -- predominantly even-order harmonics.
+6. **Discrete VCA gain cell coloration**: The Model 200's slightly higher distortion (compared to later IC VCAs) adds warmth and "graininess" -- predominantly even-order harmonics.
 
 ### Widely cited descriptions
 - "Rough, warm and grainy punch"
@@ -261,25 +261,25 @@ Additional controls:
 
 **Kick drum (punchy):** Hard Knee, 4:1-6:1, 6-10 dB GR on hits
 **Snare (snap):** Hard Knee, 4:1-5:1, 4-6 dB GR
-**Drum bus (glue):** Hard Knee or OverEasy, 4:1, moderate threshold
-**Bass:** Hard Knee or OverEasy, 3:1, 3-5 dB constant GR
+**Drum bus (glue):** Hard Knee or soft knee, 4:1, moderate threshold
+**Bass:** Hard Knee or soft knee, 3:1, 3-5 dB constant GR
 **Aggressive hip-hop drums:** Hard Knee, 6:1+, deep GR, often used in parallel
 
 ---
 
 ## Sources
 
-- Mix Online: "Birth of a Classic: The dbx 160 Compressor" (most detailed technical source)
-- Wikipedia: Blackmer Gain Cell, Blackmer RMS Detector
+- Mix Online: "Birth of a Classic" — detailed technical article on the original hardware design (most detailed technical source)
+- Wikipedia: Discrete VCA gain cell architecture, log-domain RMS detector
 - THAT Corporation: "A Brief History of VCAs"
-- GroupDIY: dbx 160 thread (sidechain analysis, component values)
-- GroupDIY: dbx 160VU clone build thread (timing R/C values)
-- dbx Professional Audio: 160A product page and manual
-- Sound on Sound: Waves dbx 160 review, dbx 160S review
+- GroupDIY: classic VCA compressor thread (sidechain analysis, component values)
+- GroupDIY: original reference compressor clone build thread (timing R/C values)
+- Reference manufacturer: later revision (A model) product page and manual
+- Sound on Sound: software emulation review, premium hardware (S revision) review
 - Attack Magazine: Top 20 Hardware Compressors
-- Gearspace: DBX 160 circuit operation thread
-- Gearspace: "What's the difference between 160/160XT/160A"
-- Universal Audio: dbx 160 Compressor Manual
-- Ovnilab: 160X/160XT review
-- Sine-Post Audio: 160A review (production settings)
-- Gearspace Hip-Hop forum: "dbx 160A = dope"
+- Gearspace: classic VCA compressor circuit operation thread
+- Gearspace: "What's the difference between original/XT/later revision" discussion thread
+- Universal Audio: classic VCA compressor emulation manual
+- Ovnilab: X revision/XT revision review
+- Sine-Post Audio: later revision (A model) review (production settings)
+- Gearspace Hip-Hop forum: classic VCA compressor production discussion

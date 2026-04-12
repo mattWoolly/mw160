@@ -42,7 +42,7 @@ struct ParameterSnapshot
     float threshold;
     float ratio;
     float outputGain;
-    float overEasy;
+    float softKnee;
     float stereoLink;
     float mix;
 };
@@ -59,7 +59,7 @@ ParameterSnapshot snapshotParameterValues(const MW160Processor& processor)
     s.threshold  = get("threshold");
     s.ratio      = get("ratio");
     s.outputGain = get("outputGain");
-    s.overEasy   = get("overEasy");
+    s.softKnee   = get("softKnee");
     s.stereoLink = get("stereoLink");
     s.mix        = get("mix");
     return s;
@@ -86,7 +86,7 @@ TEST_CASE("Plugin processor restores all parameters via state round-trip",
     writeParameterValue(processor, "threshold",  0.25f);
     writeParameterValue(processor, "ratio",      0.50f);
     writeParameterValue(processor, "outputGain", 0.75f);
-    writeParameterValue(processor, "overEasy",   1.0f);  // default false
+    writeParameterValue(processor, "softKnee",   1.0f);  // default false
     writeParameterValue(processor, "stereoLink", 0.0f);  // default true
     writeParameterValue(processor, "mix",        0.40f);
 
@@ -101,7 +101,7 @@ TEST_CASE("Plugin processor restores all parameters via state round-trip",
     writeParameterValue(processor, "threshold",  0.90f);
     writeParameterValue(processor, "ratio",      0.10f);
     writeParameterValue(processor, "outputGain", 0.20f);
-    writeParameterValue(processor, "overEasy",   0.0f);
+    writeParameterValue(processor, "softKnee",   0.0f);
     writeParameterValue(processor, "stereoLink", 1.0f);
     writeParameterValue(processor, "mix",        0.95f);
 
@@ -115,7 +115,7 @@ TEST_CASE("Plugin processor restores all parameters via state round-trip",
     REQUIRE_THAT(restored.ratio,      WithinAbs(captured.ratio,      kFloatTolerance));
     REQUIRE_THAT(restored.outputGain, WithinAbs(captured.outputGain, kFloatTolerance));
     REQUIRE_THAT(restored.mix,        WithinAbs(captured.mix,        kFloatTolerance));
-    REQUIRE_THAT(restored.overEasy,   WithinAbs(captured.overEasy,   kFloatTolerance));
+    REQUIRE_THAT(restored.softKnee,   WithinAbs(captured.softKnee,   kFloatTolerance));
     REQUIRE_THAT(restored.stereoLink, WithinAbs(captured.stereoLink, kFloatTolerance));
 }
 
@@ -137,18 +137,18 @@ TEST_CASE("Plugin processor snaps bool parameters on restore even when host wrot
 
     MW160Processor processor;
 
-    auto* overEasyParam   = processor.apvts.getParameter("overEasy");
+    auto* softKneeParam   = processor.apvts.getParameter("softKnee");
     auto* stereoLinkParam = processor.apvts.getParameter("stereoLink");
-    REQUIRE(overEasyParam   != nullptr);
+    REQUIRE(softKneeParam   != nullptr);
     REQUIRE(stereoLinkParam != nullptr);
 
     // Step 1: write raw unsnapped values via the public host API.
-    overEasyParam  ->setValueNotifyingHost(0.163635f);
+    softKneeParam  ->setValueNotifyingHost(0.163635f);
     stereoLinkParam->setValueNotifyingHost(0.572227f);
 
     // Sanity check: the parameter object stores the raw values, but the
     // APVTS adapter's atomic snaps them through the bool's range.
-    REQUIRE_THAT(overEasyParam  ->getValue(), WithinAbs(0.163635f, kFloatTolerance));
+    REQUIRE_THAT(softKneeParam  ->getValue(), WithinAbs(0.163635f, kFloatTolerance));
     REQUIRE_THAT(stereoLinkParam->getValue(), WithinAbs(0.572227f, kFloatTolerance));
 
     // Step 2: capture state. The tree records the snapped values, so
@@ -163,24 +163,85 @@ TEST_CASE("Plugin processor snaps bool parameters on restore even when host wrot
     // in the saved tree. This is what makes the early-return path in
     // ParameterAdapter::setDenormalisedValue fire on restore.
     //
-    // overEasy: tree saved 0.0f. Choose a value that snaps to 0.0f.
+    // softKnee: tree saved 0.0f. Choose a value that snaps to 0.0f.
     // stereoLink: tree saved 1.0f. Choose a value that snaps to 1.0f.
-    overEasyParam  ->setValueNotifyingHost(0.435694f); // snaps to 0
+    softKneeParam  ->setValueNotifyingHost(0.435694f); // snaps to 0
     stereoLinkParam->setValueNotifyingHost(0.617421f); // snaps to 1
 
     processor.setStateInformation(memoryBlock.getData(),
                                   static_cast<int>(memoryBlock.getSize()));
 
     // Step 4: assert the parameter object's internal value is properly
-    // snapped after restore. Without the fix, overEasy will still be
+    // snapped after restore. Without the fix, softKnee will still be
     // 0.435694 because the adapter early-returned and never called
     // setValueNotifyingHost on the parameter object.
-    const float overEasyAfter   = overEasyParam  ->getValue();
+    const float softKneeAfter   = softKneeParam  ->getValue();
     const float stereoLinkAfter = stereoLinkParam->getValue();
 
-    INFO("overEasy after restore: " << overEasyAfter);
+    INFO("softKnee after restore: " << softKneeAfter);
     INFO("stereoLink after restore: " << stereoLinkAfter);
 
-    REQUIRE((overEasyAfter   == 0.0f || overEasyAfter   == 1.0f));
+    REQUIRE((softKneeAfter   == 0.0f || softKneeAfter   == 1.0f));
     REQUIRE((stereoLinkAfter == 0.0f || stereoLinkAfter == 1.0f));
+}
+
+TEST_CASE("Migration: legacy overEasy parameter ID restores as softKnee",
+          "[plugin][state][migration][QA-TM-001][QA-CONF-005]")
+{
+    // Simulate a DAW session or user preset saved by a pre-scrub version
+    // of the plugin, where the soft knee parameter was serialized under
+    // the ID "overEasy". The migration shim in setStateInformation must
+    // rename it to "softKnee" before applying the state.
+
+    MW160Processor processor;
+
+    // Step 1: save a clean state, then manually edit the XML to use the
+    // legacy parameter ID "overEasy" with value 1.0 (soft knee enabled).
+    writeParameterValue(processor, "softKnee", 0.0f); // default: hard knee
+    writeParameterValue(processor, "threshold", 0.25f);
+
+    juce::MemoryBlock memoryBlock;
+    processor.getStateInformation(memoryBlock);
+    REQUIRE(memoryBlock.getSize() > 0);
+
+    // Parse the saved XML and rewrite the "softKnee" entry to use the
+    // legacy ID "overEasy" with value 1.0 (enabled).
+    auto xml = processor.getXmlFromBinary(memoryBlock.getData(),
+                                          static_cast<int>(memoryBlock.getSize()));
+    REQUIRE(xml != nullptr);
+
+    bool found = false;
+    for (int i = 0; i < xml->getNumChildElements(); ++i)
+    {
+        auto* child = xml->getChildElement(i);
+        if (child != nullptr && child->getStringAttribute("id") == "softKnee")
+        {
+            child->setAttribute("id", "overEasy");
+            child->setAttribute("value", 1.0);
+            found = true;
+            break;
+        }
+    }
+    REQUIRE(found);
+
+    // Re-serialize the modified XML to binary.
+    juce::MemoryBlock legacyBlock;
+    juce::AudioProcessor::copyXmlToBinary(*xml, legacyBlock);
+    REQUIRE(legacyBlock.getSize() > 0);
+
+    // Step 2: mutate softKnee to the opposite value so the restore is
+    // observable.
+    writeParameterValue(processor, "softKnee", 0.0f);
+
+    // Step 3: restore the legacy state.
+    processor.setStateInformation(legacyBlock.getData(),
+                                  static_cast<int>(legacyBlock.getSize()));
+
+    // Step 4: the soft knee parameter should now be enabled (1.0).
+    auto* softKneeParam = processor.apvts.getParameter("softKnee");
+    REQUIRE(softKneeParam != nullptr);
+
+    const float restoredValue = softKneeParam->getValue();
+    INFO("softKnee after legacy restore: " << restoredValue);
+    REQUIRE(restoredValue == 1.0f);
 }

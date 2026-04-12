@@ -7,7 +7,7 @@
 // trademark-free label that matches the project's canonical vocabulary
 // ("Knee") as defined in docs/VISUAL_SPEC.md §0 and §7.4.
 //
-// The APVTS parameter ID "overEasy" is intentionally NOT tested here;
+// The APVTS parameter ID "softKnee" is intentionally NOT tested here;
 // it is preserved for state-restore compatibility and will be renamed
 // under a separate migration ticket (QA-TM-001 / QA-CONF-005).
 
@@ -22,7 +22,7 @@ TEST_CASE("Knee parameter display name is neutral and trademark-free",
 {
     MW160Processor processor;
 
-    auto* parameter = processor.apvts.getParameter("overEasy");
+    auto* parameter = processor.apvts.getParameter("softKnee");
     REQUIRE(parameter != nullptr);
 
     // The display name must be the project-canonical neutral label.

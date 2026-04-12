@@ -102,11 +102,11 @@ TEST_CASE("GainComputer: higher ratio yields more gain reduction", "[dsp][gc]")
     }
 }
 
-// --- OverEasy (soft knee) tests ---
+// --- Soft knee tests ---
 
-static constexpr float kKneeWidth = 10.0f;  // matches Compressor::kOverEasyKneeWidth_dB
+static constexpr float kKneeWidth = 10.0f;  // matches Compressor::kSoftKneeWidth_dB
 
-TEST_CASE("OverEasy: input well below threshold yields 0 dB GR", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: input well below threshold yields 0 dB GR", "[dsp][gc][softknee]")
 {
     // Well below knee region (threshold 0, knee bottom = -5)
     REQUIRE_THAT(gc.computeGainReduction(-20.0f, 0.0f, 4.0f, kKneeWidth),
@@ -115,7 +115,7 @@ TEST_CASE("OverEasy: input well below threshold yields 0 dB GR", "[dsp][gc][over
                  WithinAbs(0.0, 1e-6));
 }
 
-TEST_CASE("OverEasy: input well above threshold yields same GR as hard knee", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: input well above threshold yields same GR as hard knee", "[dsp][gc][softknee]")
 {
     // Well above knee region (threshold 0, knee top = +5)
     const float input = 20.0f;
@@ -129,7 +129,7 @@ TEST_CASE("OverEasy: input well above threshold yields same GR as hard knee", "[
     }
 }
 
-TEST_CASE("OverEasy: input in knee region yields GR between 0 and full-ratio GR", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: input in knee region yields GR between 0 and full-ratio GR", "[dsp][gc][softknee]")
 {
     const float thresh = 0.0f;
     const float ratio = 4.0f;
@@ -147,7 +147,7 @@ TEST_CASE("OverEasy: input in knee region yields GR between 0 and full-ratio GR"
     REQUIRE(grHigh < grLow);  // more compression higher in the knee
 }
 
-TEST_CASE("OverEasy: gain reduction curve is continuous at knee boundaries", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: gain reduction curve is continuous at knee boundaries", "[dsp][gc][softknee]")
 {
     const float thresh = 0.0f;
     const float ratio = 4.0f;
@@ -168,7 +168,7 @@ TEST_CASE("OverEasy: gain reduction curve is continuous at knee boundaries", "[d
     REQUIRE_THAT(static_cast<double>(grAtTop), WithinAbs(hardGRAtTop, 1e-3));
 }
 
-TEST_CASE("OverEasy: at threshold center GR is approximately half of hard-knee GR", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: at threshold center GR is approximately half of hard-knee GR", "[dsp][gc][softknee]")
 {
     const float thresh = 0.0f;
     const float ratio = 4.0f;
@@ -186,7 +186,7 @@ TEST_CASE("OverEasy: at threshold center GR is approximately half of hard-knee G
     REQUIRE_THAT(static_cast<double>(grAtCenter), WithinAbs(expectedGR, 1e-4));
 }
 
-TEST_CASE("OverEasy: GR is always negative or zero with soft knee", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: GR is always negative or zero with soft knee", "[dsp][gc][softknee]")
 {
     for (float input = -40.0f; input <= 20.0f; input += 2.0f)
         for (float thresh = -20.0f; thresh <= 10.0f; thresh += 10.0f)
@@ -194,7 +194,7 @@ TEST_CASE("OverEasy: GR is always negative or zero with soft knee", "[dsp][gc][o
                 REQUIRE(gc.computeGainReduction(input, thresh, ratio, kKneeWidth) <= 0.0f);
 }
 
-TEST_CASE("OverEasy: kneeWidth 0 gives identical results to hard knee", "[dsp][gc][overeasy]")
+TEST_CASE("Soft knee: kneeWidth 0 gives identical results to hard knee", "[dsp][gc][softknee]")
 {
     for (float input = -20.0f; input <= 20.0f; input += 5.0f)
         for (float ratio : {2.0f, 4.0f, 8.0f, 60.0f})

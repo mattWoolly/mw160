@@ -7,15 +7,15 @@
 
 ## Product Goals
 
-MW160 is an audio plugin (VST3/AU/AAX via JUCE 7) emulating the **dbx 160 VCA compressor**. The baseline target is a faithful hardware emulation of the original 160 VU's signal behavior with the 160A's expanded control set. Where appropriate and explicitly in scope, the elements that create the signature "punch" should be identified and tastefully exaggerated for a hip-hop-oriented sound.
+MW160 is an audio plugin (VST3/AU/AAX via JUCE 7) emulating a **classic VCA compressor**. The baseline target is a faithful hardware emulation of the original hardware's signal behavior with the reference hardware's expanded control set. Where appropriate and explicitly in scope, the elements that create the signature "punch" should be identified and tastefully exaggerated for a hip-hop-oriented sound.
 
 ### Emulation scope
-- **Signal path**: Input stage -> Blackmer VCA (gain + subtle coloration) -> Output stage
+- **Signal path**: Input stage -> VCA gain element (gain + subtle coloration) -> Output stage
 - **Topology**: Feedforward compressor with true RMS detection
-- **Timing**: Program-dependent attack/release with no user A/R controls (matching the 160/160A)
-- **Controls**: Threshold (-40 to +20 dBu), Ratio (1:1 to Infinity+ negative ratios), Output Gain (-20 to +20 dB), OverEasy toggle, Stereo Link, Mix
+- **Timing**: Program-dependent attack/release with no user A/R controls (matching the reference hardware)
+- **Controls**: Threshold (-40 to +20 dBu), Ratio (1:1 to Infinity+ negative ratios), Output Gain (-20 to +20 dB), Soft Knee toggle, Stereo Link, Mix
 - **Metering**: Input level, output level, gain reduction (switchable or simultaneous)
-- **Knee**: Hard knee (default) + OverEasy soft knee (switchable)
+- **Knee**: Hard knee (default) + soft knee (switchable)
 
 ---
 
@@ -27,16 +27,16 @@ These are ranked by impact on the perceived character of the compressor:
 The single most important behavior. Attack gets faster for harder transients (15ms/10dB, 5ms/20dB, 3ms/30dB). Release operates at a roughly constant rate of ~125 dB/sec. This is what makes the 160 "punch" -- the initial transient passes through before the compressor clamps, and the release breathes naturally.
 
 ### 2. Hard knee compression (CRITICAL)
-The abrupt onset of compression at the threshold is central to the aggressive, snappy character. OverEasy (soft knee) should be a switchable alternative.
+The abrupt onset of compression at the threshold is central to the aggressive, snappy character. Soft knee should be a switchable alternative.
 
 ### 3. Feedforward topology with RMS detection (CRITICAL)
 The detector sees the uncompressed input signal (feedforward). RMS detection responds to signal energy, not peaks. This combination produces compression that tracks perceived loudness and handles extreme ratios without instability.
 
 ### 4. VCA coloration (IMPORTANT)
-The discrete Blackmer 200 VCA adds subtle, predominantly even-order harmonic distortion. This is the "warmth" and "graininess." Total THD < 0.2% -- subtle but audible on percussive material. Gain-dependent: more coloration at deeper gain reduction.
+The discrete VCA gain element adds subtle, predominantly even-order harmonic distortion. This is the "warmth" and "graininess." Total THD < 0.2% -- subtle but audible on percussive material. Gain-dependent: more coloration at deeper gain reduction.
 
 ### 5. Ratio continuity through infinity to negative (IMPORTANT)
-The 160A's ratio control sweeps smoothly from 1:1 through infinity:1 into negative ratios. This is a distinctive feature and should be preserved.
+The reference hardware's ratio control sweeps smoothly from 1:1 through infinity:1 into negative ratios. This is a distinctive feature and should be preserved.
 
 ### 6. Independent threshold / output gain (IMPORTANT)
 These controls do not interact. Output gain is pure post-compression makeup. This simplicity is part of the UX.
@@ -58,10 +58,10 @@ These controls do not interact. Output gain is pure post-compression makeup. Thi
 ### High risk
 1. **Program-dependent timing accuracy.** The junction-impedance-based time constant behavior of the original detector is nonlinear and signal-dependent. A simplified model (constant-rate release + magnitude-dependent attack) may not capture the full character. Mitigation: prototype early, A/B test against hardware recordings.
 
-2. **OverEasy knee width.** No authoritative documentation specifies the exact knee width in dB. The 160X/160A manuals describe the behavior qualitatively. Mitigation: start with 6-12 dB knee, tune by ear against hardware/plugin references.
+2. **Soft knee width.** No authoritative documentation specifies the exact knee width in dB. The reference hardware manuals describe the behavior qualitatively. Mitigation: start with 6-12 dB knee, tune by ear against hardware/plugin references.
 
 ### Medium risk
-3. **VCA saturation character.** The specific harmonic profile of the Model 200 is not fully documented (only Cytomic's measurements of a different Blackmer variant exist). Mitigation: use a tunable waveshaper, calibrate against reference recordings.
+3. **VCA saturation character.** The specific harmonic profile of the discrete VCA gain element is not fully documented (only Cytomic's measurements of a specific variant exist). Mitigation: use a tunable waveshaper, calibrate against reference recordings.
 
 4. **RMS detector time constant.** The 22uF + 909K values give ~20ms, but the actual behavior includes the nonlinear junction impedance. Mitigation: start with 20ms exponential averaging, refine with A/B testing.
 
@@ -92,7 +92,7 @@ These controls do not interact. Output gain is pure post-compression makeup. Thi
 - Unit tests: gain computer math, detector response to known signals, timing verification
 
 ### Phase 2: Extended Features
-- OverEasy soft knee (quadratic interpolation per Giannoulis)
+- Soft knee (quadratic interpolation per Giannoulis)
 - Negative ratio support (Infinity+ mode)
 - Stereo link (RMS power summing)
 - Dry/wet mix control
@@ -101,7 +101,7 @@ These controls do not interact. Output gain is pure post-compression makeup. Thi
 ### Phase 3: Character and Tuning
 - VCA saturation modeling (subtle even-order waveshaper)
 - A/B testing against hardware recordings and reference plugins (UAD, Waves, Stillwell Major Tom)
-- Tuning of: RMS time constant, attack/release curves, saturation amount, OverEasy knee width
+- Tuning of: RMS time constant, attack/release curves, saturation amount, soft knee width
 - Optional: input stage coloration
 
 ### Phase 4: Polish and Production
@@ -130,7 +130,7 @@ These controls do not interact. Output gain is pure post-compression makeup. Thi
 - **Transient preservation**: Drum hit through compressor -> verify initial transient peak is preserved relative to sustained level.
 
 ### A/B validation (against reference)
-- Compare MW160 output against UAD dbx 160 and/or Waves dbx 160 with matched settings on:
+- Compare MW160 output against reference plugins (UAD, Waves implementations) with matched settings on:
   - Sine sweeps at various levels
   - Kick drum samples
   - Snare drum samples

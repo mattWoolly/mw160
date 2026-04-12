@@ -55,7 +55,7 @@ static double measureReleaseRate(double sampleRate, float settleGR_dB)
 }
 
 // ============================================================
-// Attack timing calibration — published DBX 160 specs:
+// Attack timing calibration — published reference specs:
 //   10 dB GR target → 15 ms attack
 //   20 dB GR target →  5 ms attack
 //   30 dB GR target →  3 ms attack
@@ -148,7 +148,7 @@ TEST_CASE("Timing calibration: release rate ~125 dB/sec at -50 dB GR",
 
 // ============================================================
 // Transient "crack" preservation
-// The DBX 160's fast-then-slow attack lets the initial transient peak
+// The classic VCA compressor's fast-then-slow attack lets the initial transient peak
 // pass through before gain reduction clamps down. Verify that a sharp
 // drum-like transient retains its initial peak in the output.
 // ============================================================

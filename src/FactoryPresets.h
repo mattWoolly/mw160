@@ -8,7 +8,7 @@ struct FactoryPresetData
     float threshold;    // dBFS, range: [-40, +20]
     float ratio;        // :1,  range: [1, 60]
     float outputGain;   // dB,  range: [-20, +20]
-    bool  overEasy;
+    bool  softKnee;
     bool  stereoLink;
     float mix;          // %,   range: [0, 100]
 };

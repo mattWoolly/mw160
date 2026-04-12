@@ -12,7 +12,8 @@ namespace mw160 {
 
 /// Core compressor DSP engine.
 /// Wires RmsDetector → GainComputer → Ballistics into a complete
-/// feedforward compression pipeline matching the DBX 160 signal path.
+/// feedforward compression pipeline matching the classic VCA compressor
+/// signal path.
 /// Pure C++ — no JUCE dependency — so it can be unit-tested headlessly.
 class Compressor
 {
@@ -29,8 +30,8 @@ public:
     /// Set the output (makeup) gain in dB.
     void setOutputGain(float gain_dB);
 
-    /// Enable or disable OverEasy (soft knee) mode.
-    void setOverEasy(bool enabled);
+    /// Enable or disable soft knee mode.
+    void setSoftKnee(bool enabled);
 
     /// Set the dry/wet mix (0–100%). 100% = fully compressed, 0% = dry.
     void setMix(float mixPercent);
@@ -59,10 +60,10 @@ private:
     ParameterSmoother<SmoothingType::Multiplicative>  outputGainSmoother_;
     ParameterSmoother<SmoothingType::Linear>         mixSmoother_;
 
-    bool overEasy_ = false;
+    bool softKnee_ = false;
     float lastGainReduction_dB_ = 0.0f;
 
-    static constexpr float kOverEasyKneeWidth_dB = 10.0f;
+    static constexpr float kSoftKneeWidth_dB = 10.0f;
     static constexpr float kSilenceFloor_dB = -100.0f;
     static constexpr double kSmoothingTime_s = 0.020;  // 20 ms
 };

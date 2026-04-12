@@ -131,7 +131,7 @@ specification).
 **Location:** `src/PluginProcessor.cpp` — `getStateInformation` /
 `setStateInformation`
 **Linked to:** QA-CONF-001 (parent defect), QA-TM-001 (the
-`overEasy` parameter ID migration must land with the bool fix to avoid
+`softKnee` parameter ID migration must land with the bool fix to avoid
 double-breaking user state).
 
 ### QA-CI-003: Historical BACKLOG reference to `build.yml` is now stale

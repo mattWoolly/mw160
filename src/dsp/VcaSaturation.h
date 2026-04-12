@@ -5,12 +5,13 @@
 
 namespace mw160 {
 
-/// Models the subtle even-order harmonic distortion characteristic of the
-/// Blackmer 200 VCA.  The amount of saturation scales with gain reduction
-/// depth -- more GR means the VCA is working harder, producing more coloration.
+/// Models the subtle even-order harmonic distortion characteristic of a
+/// discrete VCA gain element.  The amount of saturation scales with gain
+/// reduction depth -- more GR means the VCA is working harder, producing
+/// more coloration.
 ///
 /// Applies a soft asymmetric waveshaper producing predominantly 2nd harmonic,
-/// matching the NPN/PNP transistor asymmetry of the discrete Blackmer gain cell.
+/// matching the NPN/PNP transistor asymmetry of a discrete VCA gain cell.
 ///
 /// Pure C++ -- no JUCE dependency -- no heap allocation -- stateless.
 class VcaSaturation

@@ -12,7 +12,7 @@ MW160Processor::MW160Processor()
     thresholdParam_ = apvts.getRawParameterValue("threshold");
     ratioParam_ = apvts.getRawParameterValue("ratio");
     outputGainParam_ = apvts.getRawParameterValue("outputGain");
-    overEasyParam_ = apvts.getRawParameterValue("overEasy");
+    softKneeParam_ = apvts.getRawParameterValue("softKnee");
     stereoLinkParam_ = apvts.getRawParameterValue("stereoLink");
     mixParam_ = apvts.getRawParameterValue("mix");
     bypassParam_ = apvts.getRawParameterValue("bypass");
@@ -45,14 +45,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
         0.0f,
         juce::AudioParameterFloatAttributes().withLabel("dB")));
 
-    // NOTE: The APVTS parameter ID "overEasy" is retained only for
-    // state-restore compatibility with previously-saved sessions; the
-    // UI label shown in the editor is "KNEE" with states HARD / SOFT.
-    // A follow-up backlog item (tracked under QA-TM-001 / param-id
-    // migration) will migrate the ID and display name together with a
-    // versioned state-upgrade path. Do not rename this ID here.
     layout.add(std::make_unique<juce::AudioParameterBool>(
-        juce::ParameterID{"overEasy", 1},
+        juce::ParameterID{"softKnee", 1},
         "Knee",
         false));
 
@@ -149,7 +143,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
     const float threshold = thresholdParam_->load();
     const float ratio = ratioParam_->load();
     const float outputGain = outputGainParam_->load();
-    const bool overEasy = overEasyParam_->load() >= 0.5f;
+    const bool softKnee = softKneeParam_->load() >= 0.5f;
     const bool stereoLink = stereoLinkParam_->load() >= 0.5f;
     const float mix = mixParam_->load();
     const bool bypassed = bypassParam_->load() >= 0.5f;
@@ -159,7 +153,7 @@ void MW160Processor::processBlock(juce::AudioBuffer<float>& buffer,
         compressor_[ch].setThreshold(threshold);
         compressor_[ch].setRatio(ratio);
         compressor_[ch].setOutputGain(outputGain);
-        compressor_[ch].setOverEasy(overEasy);
+        compressor_[ch].setSoftKnee(softKnee);
         compressor_[ch].setMix(mix);
     }
 
@@ -268,6 +262,20 @@ void MW160Processor::setStateInformation(const void* data, int sizeInBytes)
         return;
 
     auto restoredState = juce::ValueTree::fromXml(*xml);
+
+    // Migration: rename legacy parameter ID "overEasy" -> "softKnee" so
+    // that saved states from versions prior to the trademark scrub restore
+    // correctly under the new ID.
+    for (int i = 0; i < restoredState.getNumChildren(); ++i)
+    {
+        auto child = restoredState.getChild(i);
+        if (child.getProperty("id").toString() == "overEasy")
+        {
+            child.setProperty("id", "softKnee", nullptr);
+            break;
+        }
+    }
+
     apvts.replaceState(restoredState);
 
     // QA-CONF-001: AudioProcessorValueTreeState::replaceState only

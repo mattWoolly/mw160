@@ -3,7 +3,7 @@
 ## Date: 2026-04-06
 ## Ticket: MW160-17
 
-## Reference Specs (DBX 160 Published)
+## Reference Specs (Published)
 
 **Attack (program-dependent):**
 | GR Depth | Published Time |
@@ -29,7 +29,7 @@ current_GR = coeff * current_GR + (1 - coeff) * target_GR
 
 The key behavior: larger transients (higher magnitude) produce a shorter time constant,
 giving faster initial attack. As the filter converges and magnitude shrinks, the time
-constant lengthens and convergence slows. This produces the characteristic DBX 160
+constant lengthens and convergence slows. This produces the characteristic classic VCA compressor
 attack shape: fast onset that decelerates near final GR.
 
 ### Release
@@ -105,7 +105,7 @@ was fed through the compressor with threshold=-20 dB, ratio=4:1.
 
 The RMS detector's 20 ms time constant means the sidechain hasn't responded during
 the initial transient, allowing the peak to pass through. This is the mechanism
-behind the DBX 160's characteristic "crack" on drums.
+behind the reference hardware's characteristic "crack" on drums.
 
 ### Sample rate independence
 
@@ -117,7 +117,7 @@ behind the DBX 160's characteristic "crack" on drums.
 
 ## Rationale for Exponent Choice
 
-The published DBX 160 timing shows attack time scaling approximately as:
+The published reference hardware timing shows attack time scaling approximately as:
 
 ```
 t_attack ~ C / (GR_depth ^ 1.5)
@@ -133,7 +133,7 @@ attack amplifier harder, producing disproportionately faster response.
 
 This model is a simplified approximation. Known differences:
 
-1. **Attack shape:** The real 160 uses an analog integrator with junction-impedance
+1. **Attack shape:** The reference hardware uses an analog integrator with junction-impedance
    nonlinearities. Our one-pole digital filter with time-varying coefficient captures
    the envelope well but may differ in fine detail (overshoot, sub-ms transient shape).
 
