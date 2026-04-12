@@ -186,7 +186,7 @@ is part of its visual and operational identity.
 
 | Control      | Range (typical)              | Unit | Notes |
 |--------------|------------------------------|------|-------|
-| Threshold    | −40 to +20                   | dBu  | Reference level conventions vary; dBu is historically accurate for balanced line gear, dBFS is the sensible digital equivalent. The chosen convention must be **documented in the UI and the manual** — ambiguity here is a UX bug. |
+| Threshold    | −40 to +20                   | dBFS | Reference level conventions vary; dBu is historically accurate for balanced line gear, dBFS is the sensible digital equivalent. **This project uses dBFS** because the level detector and gain computer operate directly on full-scale sample magnitudes with no analog calibration shift — a user dialling threshold = 0 sees compression onset at 0 dBFS, not at an implied analog reference. The chosen convention must be **documented in the UI and the manual** — ambiguity here is a UX bug. |
 | Ratio        | 1:1 → ∞:1 (continuous)       | :1   | Must reach **infinity** (limiter mode) at the top of the travel. Some hardware of this class extended *past* infinity into negative ratios (dynamics inversion); that is a signature capability of the class and should be considered optional but within scope. |
 | Output gain  | −20 to +20                   | dB   | Post-everything linear scale; see §1.7. |
 

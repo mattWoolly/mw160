@@ -28,7 +28,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout MW160Processor::createParame
         "Threshold",
         juce::NormalisableRange<float>(-40.0f, 20.0f, 0.1f),
         0.0f,
-        juce::AudioParameterFloatAttributes().withLabel("dBu")));
+        juce::AudioParameterFloatAttributes().withLabel("dBFS")));
 
     layout.add(std::make_unique<juce::AudioParameterFloat>(
         juce::ParameterID{"ratio", 1},
