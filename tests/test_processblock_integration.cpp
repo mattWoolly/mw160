@@ -186,9 +186,11 @@ TEST_CASE("processBlock: stereo link off produces independent channel compressio
 
     auto* threshParam = processor.apvts.getParameter("threshold");
     auto* ratioParam  = processor.apvts.getParameter("ratio");
+    auto* outputParam = processor.apvts.getParameter("outputGain");
     auto* linkParam   = processor.apvts.getParameter("stereoLink");
     threshParam->setValueNotifyingHost(threshParam->convertTo0to1(-20.0f));
     ratioParam->setValueNotifyingHost(ratioParam->convertTo0to1(4.0f));
+    outputParam->setValueNotifyingHost(outputParam->convertTo0to1(0.0f));
     linkParam->setValueNotifyingHost(0.0f); // stereo link OFF
 
     juce::AudioBuffer<float> buf(2, kBlockSize);

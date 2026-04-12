@@ -5,7 +5,7 @@
 
 TEST_CASE("Factory presets: correct count", "[presets]")
 {
-    REQUIRE(mw160::kNumFactoryPresets == 7);
+    REQUIRE(mw160::kNumFactoryPresets == 8);
 }
 
 TEST_CASE("Factory presets: parameter ranges are valid", "[presets]")
@@ -51,6 +51,7 @@ TEST_CASE("Factory presets: expected names present", "[presets]")
         "Drum Bus Glue",
         "Bass Control",
         "Parallel Smash",
+        "Vocal Presence",
         "Gentle Leveling",
         "Brick Wall",
     };
@@ -94,7 +95,7 @@ TEST_CASE("Factory presets: spot-check Parallel Smash values", "[presets]")
 
 TEST_CASE("Factory presets: spot-check Brick Wall values", "[presets]")
 {
-    const auto& p = mw160::kFactoryPresets[6];
+    const auto& p = mw160::kFactoryPresets[7];
     REQUIRE(std::string(p.name) == "Brick Wall");
     CHECK(p.ratio == 60.0f);
     CHECK(p.softKnee == false);

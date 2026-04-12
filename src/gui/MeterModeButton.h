@@ -12,7 +12,8 @@
 /// corresponding meter's top label and tick column. This preserves the
 /// "one meter, mode-switched" identity of the original hardware idiom and
 /// keeps the door open for a future single-meter flavor variant.
-class MeterModeButton : public juce::Component
+class MeterModeButton : public juce::Component,
+                        public juce::SettableTooltipClient
 {
 public:
     enum class Mode { In = 0, Out = 1, Gr = 2 };

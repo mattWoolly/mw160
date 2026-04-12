@@ -20,6 +20,7 @@ inline constexpr FactoryPresetData kFactoryPresets[] =
     { "Drum Bus Glue",   -12.0f,  4.0f, 3.0f, true,  true,  100.0f },
     { "Bass Control",    -14.0f,  3.0f, 2.0f, true,  false, 100.0f },
     { "Parallel Smash",  -20.0f,  8.0f, 6.0f, false, true,   50.0f },
+    { "Vocal Presence",   -16.0f,  3.0f, 4.0f, true,  false, 100.0f },
     { "Gentle Leveling",  -8.0f,  2.0f, 1.0f, true,  true,  100.0f },
     { "Brick Wall",       -6.0f, 60.0f, 0.0f, false, true,  100.0f },
 };

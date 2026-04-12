@@ -31,6 +31,9 @@ private:
 
     CustomLookAndFeel customLnf;
 
+    // Tooltip popup — enables hover help for all controls using setHelpText().
+    juce::TooltipWindow tooltipWindow { this, 500 };
+
     // Aspect-lock constrainer (VISUAL_SPEC.md §1.2).
     juce::ComponentBoundsConstrainer aspectConstrainer_;
 
