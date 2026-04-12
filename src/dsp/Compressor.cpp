@@ -23,6 +23,7 @@ void Compressor::reset()
     detector_.reset();
     ballistics_.reset();
     lastGainReduction_dB_ = 0.0f;
+    previousGainLinear_ = 1.0f;
 }
 
 void Compressor::setThreshold(float threshold_dB)
@@ -52,13 +53,20 @@ void Compressor::setMix(float mixPercent)
 
 float Compressor::processSample(float input)
 {
-    const float rmsLinear = detector_.processSample(input);
+    // Feedback topology: the detector sees the estimated output (input
+    // scaled by the previous sample's gain) rather than the raw input.
+    const float feedbackInput = input * previousGainLinear_;
+    const float rmsLinear = detector_.processSample(feedbackInput);
     return applyCompression(input, rmsLinear);
 }
 
 float Compressor::processSampleLinked(float input, double detectorInputSquared)
 {
-    const float rmsLinear = detector_.processSampleFromSquared(detectorInputSquared);
+    // Feedback topology: scale the externally-provided squared value by
+    // the previous sample's gain² so the detector sees the estimated
+    // output level rather than the raw input level.
+    const double g = static_cast<double>(previousGainLinear_);
+    const float rmsLinear = detector_.processSampleFromSquared(detectorInputSquared * g * g);
     return applyCompression(input, rmsLinear);
 }
 
@@ -85,6 +93,7 @@ float Compressor::applyCompression(float input, float rmsLinear)
 
     // Convert gain reduction to linear gain
     const float gain = std::pow(10.0f, smoothedGR_dB / 20.0f);
+    previousGainLinear_ = gain;
 
     // Apply gain reduction and VCA saturation
     const float compressed = input * gain;

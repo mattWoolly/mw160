@@ -90,9 +90,11 @@ TEST_CASE("Compressor integration: sine above threshold at 4:1 compresses correc
     const float inputRms_dB = 20.0f * std::log10(inputRms);
     const float outputRms_dB = 20.0f * std::log10(outputRms);
 
-    // Expected: 10 dB excess at 4:1 → GR = 10 * (1/4 - 1) = -7.5 dB
-    // So output should be ~7.5 dB below input
-    const float expectedOutputRms_dB = inputRms_dB - 7.5f;
+    // Feedback topology: GR = excess * slope / (1 - slope)
+    // 10 dB excess at 4:1: slope = 1/4 - 1 = -0.75
+    // GR = 10 * (-0.75) / (1 - (-0.75)) = 10 * (-0.75) / 1.75 ≈ -4.286 dB
+    const float expectedGR = 10.0f * (1.0f / 4.0f - 1.0f) / (1.0f - (1.0f / 4.0f - 1.0f));
+    const float expectedOutputRms_dB = inputRms_dB + expectedGR;
 
     REQUIRE_THAT(static_cast<double>(outputRms_dB),
                  WithinAbs(static_cast<double>(expectedOutputRms_dB), 1.0));
