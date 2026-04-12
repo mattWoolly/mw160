@@ -95,6 +95,7 @@ add_executable(MW160Tests
     tests/test_aliasing.cpp
     tests/test_factory_presets.cpp
     tests/test_plugin_processor_state.cpp
+    tests/test_plugin_parameter_display_names.cpp
 )
 
 target_link_libraries(MW160Tests
