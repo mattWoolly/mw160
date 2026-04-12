@@ -1,0 +1,208 @@
+name: Build & Validate
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+
+env:
+  BUILD_TYPE: Release
+  PLUGINVAL_VERSION: v1.0.4
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+            pluginval_asset: pluginval_Linux.zip
+          - os: macos-14
+            name: macos
+            pluginval_asset: pluginval_macOS.zip
+          - os: windows-latest
+            name: windows
+            pluginval_asset: pluginval_Windows.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------- System dependencies ----------------
+
+      - name: Install Linux dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libfreetype-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev \
+            xvfb
+
+      # ---------------- Dependency cache ----------------
+      # JUCE + Catch2 are pulled via FetchContent into build/_deps. Cache key
+      # is pinned to CMakeLists.txt content so a JUCE or Catch2 version bump
+      # invalidates the cache automatically.
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-${{ matrix.name }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            deps-${{ matrix.name }}-
+
+      # ---------------- Configure ----------------
+
+      - name: Configure (Linux / Windows)
+        if: matrix.name != 'macos'
+        shell: bash
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Configure (macOS universal)
+        if: matrix.name == 'macos'
+        shell: bash
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      # ---------------- Build ----------------
+
+      - name: Build
+        shell: bash
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+
+      # ---------------- Unit tests ----------------
+
+      - name: Run Catch2 tests
+        shell: bash
+        run: ctest --test-dir build --output-on-failure -C ${{ env.BUILD_TYPE }}
+
+      # ---------------- pluginval ----------------
+
+      - name: Download pluginval (Linux / macOS)
+        if: matrix.name != 'windows'
+        shell: bash
+        run: |
+          curl -sL -o pluginval.zip \
+            "https://github.com/Tracktion/pluginval/releases/download/${{ env.PLUGINVAL_VERSION }}/${{ matrix.pluginval_asset }}"
+          unzip -o pluginval.zip -d build
+          if [ "${{ matrix.name }}" = "linux" ]; then
+            chmod +x build/pluginval
+          fi
+
+      - name: Download pluginval (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://github.com/Tracktion/pluginval/releases/download/${{ env.PLUGINVAL_VERSION }}/${{ matrix.pluginval_asset }}" `
+            -OutFile pluginval.zip
+          Expand-Archive -Path pluginval.zip -DestinationPath build -Force
+
+      - name: Locate VST3 artifact (Linux / macOS)
+        if: matrix.name != 'windows'
+        shell: bash
+        run: |
+          VST3_PATH="build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3"
+          if [ ! -e "$VST3_PATH" ]; then
+            VST3_PATH="build/MW160_artefacts/VST3/MW160.vst3"
+          fi
+          if [ ! -e "$VST3_PATH" ]; then
+            echo "::error::VST3 artifact not found at expected paths"
+            find build/MW160_artefacts -name "MW160.vst3" -print || true
+            exit 1
+          fi
+          echo "VST3_PATH=$VST3_PATH" >> "$GITHUB_ENV"
+
+      - name: Locate VST3 artifact (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $p = "build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3"
+          if (-not (Test-Path $p)) { $p = "build/MW160_artefacts/VST3/MW160.vst3" }
+          if (-not (Test-Path $p)) {
+            Write-Host "::error::VST3 artifact not found at expected paths"
+            Get-ChildItem -Recurse -Filter "MW160.vst3" build/MW160_artefacts
+            exit 1
+          }
+          "VST3_PATH=$p" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Validate VST3 with pluginval (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          xvfb-run -a build/pluginval \
+            --validate-in-process \
+            --strictness-level 10 \
+            --validate "$VST3_PATH"
+
+      - name: Validate VST3 with pluginval (macOS)
+        if: matrix.name == 'macos'
+        run: |
+          build/pluginval.app/Contents/MacOS/pluginval \
+            --validate-in-process \
+            --strictness-level 10 \
+            --validate "$VST3_PATH"
+
+      - name: Validate VST3 with pluginval (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          build/pluginval.exe `
+            --validate-in-process `
+            --strictness-level 10 `
+            --validate $env:VST3_PATH
+
+      # ---------------- Artifacts ----------------
+
+      - name: Upload VST3 binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mw160-${{ matrix.name }}-vst3
+          path: build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload AU bundle (macOS only)
+        if: matrix.name == 'macos' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mw160-macos-au
+          path: build/MW160_artefacts/${{ env.BUILD_TYPE }}/AU/MW160.component
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Standalone binary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mw160-${{ matrix.name }}-standalone
+          path: build/MW160_artefacts/${{ env.BUILD_TYPE }}/Standalone/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mw160-${{ matrix.name }}-logs
+          path: |
+            build/Testing/
+            build/CMakeFiles/CMakeOutput.log
+            build/CMakeFiles/CMakeError.log
+          if-no-files-found: ignore
+          retention-days: 7
