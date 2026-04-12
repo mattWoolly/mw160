@@ -82,6 +82,7 @@ add_executable(MW160Tests
     tests/test_ballistics.cpp
     tests/test_compressor_integration.cpp
     tests/test_gain_computer.cpp
+    tests/test_gain_computer_infinity_ratio.cpp
     tests/test_mix.cpp
     tests/test_parameter_smoothing.cpp
     tests/test_rms_detector.cpp
