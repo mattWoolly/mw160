@@ -66,6 +66,7 @@ private:
     void refreshPresetList();
     void onSavePreset();
     void onDeletePreset();
+    void trySavePreset(const juce::String& name, bool allowOverwrite);
     void updateValueReadouts();
 
     // --- Toggle switches (KNEE / STEREO LINK / BYPASS) ---

@@ -251,6 +251,7 @@ bool MW160Processor::hasEditor() const { return true; }
 void MW160Processor::getStateInformation(juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
+    state.setProperty("pluginVersion", 1, nullptr);
     std::unique_ptr<juce::XmlElement> xml(state.createXml());
     copyXmlToBinary(*xml, destData);
 }
@@ -262,6 +263,11 @@ void MW160Processor::setStateInformation(const void* data, int sizeInBytes)
         return;
 
     auto restoredState = juce::ValueTree::fromXml(*xml);
+
+    // Read the plugin version for future migration branching.
+    // Version 0 = legacy (pre-versioning), version 1 = current.
+    [[maybe_unused]] const int stateVersion =
+        static_cast<int>(restoredState.getProperty("pluginVersion", 0));
 
     // Migration: rename legacy parameter ID "overEasy" -> "softKnee" so
     // that saved states from versions prior to the trademark scrub restore
