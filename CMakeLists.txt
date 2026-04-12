@@ -74,6 +74,12 @@ target_link_libraries(MW160
         juce::juce_recommended_warning_flags
 )
 
+# ---------- Umbrella target -------------------------------------------------
+# JUCE auto-generates MW160_All (depends on MW160_VST3, MW160_AU, MW160_Standalone).
+# Use  cmake --build build --target MW160_All  to build every plugin format.
+# The bare "MW160" target only builds the shared-code static library.
+# -----------------------------------------------------------------------------
+
 # ---------- Test target (headless, no JUCE GUI dependency) ----------
 enable_testing()
 

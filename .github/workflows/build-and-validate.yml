@@ -81,9 +81,9 @@ jobs:
 
       # ---------------- Build ----------------
 
-      - name: Build
+      - name: Build all plugin formats and tests
         shell: bash
-        run: cmake --build build --config ${{ env.BUILD_TYPE }} --parallel
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --target MW160_All MW160Tests MW160NoAllocTests --parallel
 
       # ---------------- Unit tests ----------------
 
