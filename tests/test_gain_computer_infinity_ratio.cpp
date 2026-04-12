@@ -85,28 +85,25 @@ TEST_CASE("QA-UX-002: soft-knee path uses the pinned slope above the knee",
     REQUIRE_THAT(static_cast<double>(gr), WithinAbs(-6.0, 0.001));
 }
 
-TEST_CASE("QA-UX-002: full Compressor with Brick Wall preset clamps RMS output near threshold",
+TEST_CASE("QA-UX-002: full Compressor with Brick Wall preset at feedback equilibrium",
           "[dsp][gain-computer][QA-UX-002]")
 {
     // End-to-end sanity check: run the Compressor with the Brick Wall
-    // factory preset parameters (threshold -6, ratio 60, outputGain 0)
-    // and verify that, after envelope settling, the output RMS for a
-    // sine well above threshold is within ~1 dB of the threshold. With
-    // the old 1/R - 1 slope at ratio 60 we would have 10 * 1/60 = 0.167
-    // dB of leakage per 10 dB excess; with the short-circuit to -1.0 the
-    // excess should be fully cancelled (modulo the RMS detector and
-    // envelope settling, which the existing integration tests already
-    // characterise).
+    // factory preset parameters (threshold -6, ratio 60, outputGain 0).
+    //
+    // In feedback topology with slope pinned to -1.0 (infinity:1), the
+    // closed-form equilibrium is:
+    //   GR = excess * (-1) / (1 - (-1)) = -excess / 2
+    //   output_dB = input_dB - excess / 2 = (input_dB + threshold) / 2
+    //
+    // This gives an effective 2:1 overall I/O ratio — characteristic of
+    // feedback compressors at their maximum ratio setting.
     constexpr double kSampleRate = 44100.0;
     const float threshold_dB = -6.0f;
     const float ratio = 60.0f;
+    const float excess_dB = 10.0f;
 
-    // Sine with RMS 10 dB above threshold:
-    //   RMS = amplitude / sqrt(2) = 10^((threshold+10)/20)
-    //   amplitude = sqrt(2) * 10^(4/20) = sqrt(2) * 1.5849 ~= 2.2416
-    // (We're past 0 dBFS here, but that's fine for the DSP test — no
-    // VcaSaturation ceiling, just a level domain check.)
-    const float rmsDesired_dB = threshold_dB + 10.0f;
+    const float rmsDesired_dB = threshold_dB + excess_dB;
     const float rmsDesired = std::pow(10.0f, rmsDesired_dB / 20.0f);
     const float amplitude = rmsDesired * std::sqrt(2.0f);
 
@@ -118,8 +115,6 @@ TEST_CASE("QA-UX-002: full Compressor with Brick Wall preset clamps RMS output n
     comp.setSoftKnee(false);
     comp.setMix(100.0f);
 
-    // Process 1 second of audio so the detector + ballistics + parameter
-    // smoothers fully settle.
     const int totalSamples = static_cast<int>(kSampleRate);
     std::vector<float> output(static_cast<size_t>(totalSamples));
     const double twoPiOverSr = 2.0 * 3.14159265358979323846 * 1000.0 / kSampleRate;
@@ -129,7 +124,6 @@ TEST_CASE("QA-UX-002: full Compressor with Brick Wall preset clamps RMS output n
         output[static_cast<size_t>(i)] = comp.processSample(s);
     }
 
-    // Measure RMS of the last half of the buffer, after settling.
     const int startSample = totalSamples / 2;
     double sum = 0.0;
     for (int i = startSample; i < totalSamples; ++i)
@@ -140,11 +134,8 @@ TEST_CASE("QA-UX-002: full Compressor with Brick Wall preset clamps RMS output n
     const float outputRms = static_cast<float>(std::sqrt(sum / (totalSamples - startSample)));
     const float outputRms_dB = 20.0f * std::log10(outputRms);
 
-    // With slope pinned to -1.0 the RMS output should sit essentially at
-    // threshold (±1 dB for VCA saturation and envelope shape). With the
-    // unfixed code at ratio 60 we'd see ~-5.83 dB (leakage ~0.17 dB),
-    // within this tolerance too — so this test alone wouldn't catch the
-    // bug, but it's a good sanity bound and it *does* catch the fix.
+    // Feedback equilibrium: output ≈ (input + threshold) / 2
+    const float expectedOutput_dB = (rmsDesired_dB + threshold_dB) / 2.0f;  // -1.0
     REQUIRE_THAT(static_cast<double>(outputRms_dB),
-                 WithinAbs(static_cast<double>(threshold_dB), 1.0));
+                 WithinAbs(static_cast<double>(expectedOutput_dB), 1.0));
 }

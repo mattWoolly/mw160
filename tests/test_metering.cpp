@@ -21,10 +21,13 @@ static std::vector<float> generateSine(double sampleRate, float amplitude,
 TEST_CASE("Metering: GR reports correct gain reduction for known compression",
           "[dsp][metering]")
 {
-    // Sine at -10 dBFS RMS, threshold -20, ratio 4:1 → 7.5 dB GR
+    // Sine at -10 dBFS RMS, threshold -20, ratio 4:1
+    // Feedback GR = 10 * (-0.75) / 1.75 ≈ -4.286 dB
     const float amplitude = 0.4472f;  // RMS ≈ -10 dBFS
     const float threshold = -20.0f;
     const float ratio = 4.0f;
+    const float slope = 1.0f / ratio - 1.0f;
+    const float expectedGR = 10.0f * slope / (1.0f - slope);  // ≈ -4.286
 
     mw160::Compressor comp;
     comp.prepare(kSampleRate, 512);
@@ -39,10 +42,10 @@ TEST_CASE("Metering: GR reports correct gain reduction for known compression",
     for (size_t i = 0; i < input.size(); ++i)
         comp.processSample(input[i]);
 
-    // After settling, GR should be approximately -7.5 dB
     const float gr = comp.getLastGainReduction_dB();
     REQUIRE(gr < 0.0f);
-    REQUIRE_THAT(static_cast<double>(gr), WithinAbs(-7.5, 1.5));
+    REQUIRE_THAT(static_cast<double>(gr),
+                 WithinAbs(static_cast<double>(expectedGR), 1.5));
 }
 
 TEST_CASE("Metering: GR is zero when signal is below threshold",

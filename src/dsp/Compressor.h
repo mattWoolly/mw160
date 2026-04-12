@@ -12,8 +12,11 @@ namespace mw160 {
 
 /// Core compressor DSP engine.
 /// Wires RmsDetector → GainComputer → Ballistics into a complete
-/// feedforward compression pipeline matching the classic VCA compressor
-/// signal path.
+/// feedback-topology compression pipeline matching the classic VCA
+/// compressor signal path.  The level detector reads a one-sample-delayed
+/// estimate of the compressor output (post-VCA), so the gain-reduction
+/// curve converges to the closed-form feedback equilibrium:
+///   GR = excess × slope / (1 − slope),  slope = 1/R − 1
 /// Pure C++ — no JUCE dependency — so it can be unit-tested headlessly.
 class Compressor
 {
@@ -62,6 +65,7 @@ private:
 
     bool softKnee_ = false;
     float lastGainReduction_dB_ = 0.0f;
+    float previousGainLinear_ = 1.0f;   // feedback: previous sample's linear gain
 
     static constexpr float kSoftKneeWidth_dB = 10.0f;
     static constexpr float kSilenceFloor_dB = -100.0f;

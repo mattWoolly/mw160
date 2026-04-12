@@ -68,11 +68,14 @@ static std::vector<float> processBuffer(mw160::Compressor& comp,
     return output;
 }
 
-/// Compute the theoretical hard-knee gain reduction for a given excess.
+/// Compute the theoretical hard-knee gain reduction for a feedback
+/// compressor at steady state.
+/// Closed form: GR = excess * slope / (1 - slope), slope = 1/R - 1
 static float theoreticalGR(float excess_dB, float ratio)
 {
     if (excess_dB <= 0.0f) return 0.0f;
-    return excess_dB * (1.0f / ratio - 1.0f);
+    const float slope = (ratio >= 50.0f) ? -1.0f : (1.0f / ratio - 1.0f);
+    return excess_dB * slope / (1.0f - slope);
 }
 
 // ==========================================================================
@@ -83,11 +86,11 @@ TEST_CASE("Gain staging: steady-state GR at 0 dBFS RMS, threshold -20, ratio 4:1
           "[dsp][calibration]")
 {
     // 0 dBFS RMS input, threshold -20 dB => 20 dB excess
-    // GR = 20 * (1/4 - 1) = -15 dB
+    // Feedback GR = 20 * (-0.75) / 1.75 ≈ -8.57 dB
     const float rms_dBFS = 0.0f;
     const float threshold = -20.0f;
     const float ratio = 4.0f;
-    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // -15.0
+    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // ≈ -8.57
 
     mw160::Compressor comp;
     comp.prepare(kSampleRate, 512);
@@ -110,11 +113,11 @@ TEST_CASE("Gain staging: steady-state GR at -6 dBFS RMS, threshold -20, ratio 4:
           "[dsp][calibration]")
 {
     // -6 dBFS RMS, threshold -20 => 14 dB excess
-    // GR = 14 * (1/4 - 1) = -10.5 dB
+    // Feedback GR = 14 * (-0.75) / 1.75 = -6.0 dB
     const float rms_dBFS = -6.0f;
     const float threshold = -20.0f;
     const float ratio = 4.0f;
-    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // -10.5
+    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // -6.0
 
     mw160::Compressor comp;
     comp.prepare(kSampleRate, 512);
@@ -137,11 +140,11 @@ TEST_CASE("Gain staging: steady-state GR at -12 dBFS RMS, threshold -20, ratio 4
           "[dsp][calibration]")
 {
     // -12 dBFS RMS, threshold -20 => 8 dB excess
-    // GR = 8 * (1/4 - 1) = -6.0 dB
+    // Feedback GR = 8 * (-0.75) / 1.75 ≈ -3.43 dB
     const float rms_dBFS = -12.0f;
     const float threshold = -20.0f;
     const float ratio = 4.0f;
-    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // -6.0
+    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // ≈ -3.43
 
     mw160::Compressor comp;
     comp.prepare(kSampleRate, 512);
@@ -187,11 +190,11 @@ TEST_CASE("Gain staging: no GR at -20 dBFS RMS when threshold is -10",
 // Specific acceptance criterion from the ticket
 // ==========================================================================
 
-TEST_CASE("Gain staging: threshold 0 dB + ratio 4:1 + input +10 dBFS RMS => 7.5 dB GR",
+TEST_CASE("Gain staging: threshold 0 dB + ratio 4:1 + input +10 dBFS RMS => feedback GR",
           "[dsp][calibration]")
 {
     // Input at +10 dBFS RMS, threshold 0 dB => 10 dB excess
-    // GR = 10 * (1/4 - 1) = -7.5 dB
+    // Feedback GR = 10 * (-0.75) / 1.75 ≈ -4.29 dB
     const float rms_dBFS = 10.0f;
     const float threshold = 0.0f;
     const float ratio = 4.0f;
@@ -209,7 +212,9 @@ TEST_CASE("Gain staging: threshold 0 dB + ratio 4:1 + input +10 dBFS RMS => 7.5 
     const float outputRms_dB = toDb(measureRms(output, kMeasureStart, kMeasureLen));
     const float measuredGR = outputRms_dB - inputRms_dB;
 
-    REQUIRE_THAT(static_cast<double>(measuredGR), WithinAbs(-7.5, 0.5));
+    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // ≈ -4.29
+    REQUIRE_THAT(static_cast<double>(measuredGR),
+                 WithinAbs(static_cast<double>(expectedGR), 0.5));
 }
 
 // ==========================================================================
@@ -374,10 +379,10 @@ TEST_CASE("Gain staging: metered GR matches actual output level difference",
         float ratio;
     };
     const TestPoint points[] = {
-        { 0.0f,  -20.0f, 4.0f },   // 20 dB excess, GR = -15.0
-        { -6.0f, -20.0f, 4.0f },   // 14 dB excess, GR = -10.5
-        { -6.0f, -20.0f, 8.0f },   // 14 dB excess, GR = -12.25
-        { 10.0f,   0.0f, 4.0f },   // 10 dB excess, GR = -7.5
+        { 0.0f,  -20.0f, 4.0f },   // 20 dB excess, feedback GR ≈ -8.57
+        { -6.0f, -20.0f, 4.0f },   // 14 dB excess, feedback GR = -6.0
+        { -6.0f, -20.0f, 8.0f },   // 14 dB excess, feedback GR ≈ -6.53
+        { 10.0f,   0.0f, 4.0f },   // 10 dB excess, feedback GR ≈ -4.29
     };
 
     for (const auto& pt : points)
@@ -424,14 +429,14 @@ TEST_CASE("Gain staging: correct GR across ratio range",
     struct RatioTest
     {
         float ratio;
-        float expectedGR;  // excess * (1/ratio - 1)
+        float expectedGR;  // feedback: excess * slope / (1 - slope)
     };
     const RatioTest tests[] = {
-        { 2.0f,  excess * (1.0f / 2.0f  - 1.0f) },   // -7.0
-        { 4.0f,  excess * (1.0f / 4.0f  - 1.0f) },   // -10.5
-        { 8.0f,  excess * (1.0f / 8.0f  - 1.0f) },   // -12.25
-        { 20.0f, excess * (1.0f / 20.0f - 1.0f) },   // -13.3
-        { 60.0f, excess * (1.0f / 60.0f - 1.0f) },   // -13.77 (infinity:1)
+        { 2.0f,  theoreticalGR(excess, 2.0f)  },   // -4.67
+        { 4.0f,  theoreticalGR(excess, 4.0f)  },   // -6.0
+        { 8.0f,  theoreticalGR(excess, 8.0f)  },   // -6.53
+        { 20.0f, theoreticalGR(excess, 20.0f) },   // -6.82
+        { 60.0f, theoreticalGR(excess, 60.0f) },   // -7.0 (infinity:1)
     };
 
     for (const auto& t : tests)
@@ -472,7 +477,7 @@ TEST_CASE("Gain staging: consistent GR at 96 kHz",
     const float rms_dBFS = -6.0f;
     const float threshold = -20.0f;
     const float ratio = 4.0f;
-    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // -10.5
+    const float expectedGR = theoreticalGR(rms_dBFS - threshold, ratio);  // -6.0
 
     // Generate sine at 96 kHz
     const float amplitude = sineAmplitudeForRms_dBFS(rms_dBFS);
