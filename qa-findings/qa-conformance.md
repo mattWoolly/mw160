@@ -7,7 +7,7 @@ only, no source modifications.
 
 - **pluginval strictness-10: FAILED.** The "Plugin state restoration"
   block reports a reproducible failure on the two boolean parameters
-  (`overEasy`, `stereoLink`). All 3 runs at random seeds reproduced a
+  (`softKnee`, `stereoLink`). All 3 runs at random seeds reproduced a
   failure on at least one of the two booleans; the float parameters
   restored cleanly every time. All other pluginval test groups pass.
 - **Thread-safety: PASS with one gap in coverage.** The audio thread
@@ -49,9 +49,9 @@ Three independent runs of
 
 | Run | Seed       | Failures                                                                 |
 |-----|------------|---------------------------------------------------------------------------|
-| 1   | 0x443e57   | Test 4: `OverEasy not restored` — expected 0, got 0.163635                |
-| 2   | (random)   | Test 4: `OverEasy not restored` (got 0.435694) AND Test 5: `Stereo Link not restored` (expected 1, got 0.572227) |
-| 3   | 0x3ce904c  | Test 4: `OverEasy not restored` — expected 0, got 0.160072                |
+| 1   | 0x443e57   | Test 4: `softKnee not restored` — expected 0, got 0.163635                |
+| 2   | (random)   | Test 4: `softKnee not restored` (got 0.435694) AND Test 5: `Stereo Link not restored` (expected 1, got 0.572227) |
+| 3   | 0x3ce904c  | Test 4: `softKnee not restored` — expected 0, got 0.160072                |
 
 The relevant excerpt from run 1
 (`qa-artifacts/pluginval_strict10.log`):
@@ -67,7 +67,7 @@ Num programs: 7
 All program names checked
 ...
 Starting tests in: pluginval / Plugin state restoration...
-!!! Test 4 failed: OverEasy not restored on setStateInformation -- Expected value  within 0.1 of: 0, Actual value: 0.163635
+!!! Test 4 failed: softKnee not restored on setStateInformation -- Expected value  within 0.1 of: 0, Actual value: 0.163635
 FAILED!!  1 test failed, out of a total of 7
 ...
 Inputs:
@@ -170,7 +170,7 @@ Full logs:
 **Context / repro:**
 1. `xvfb-run -a build/pluginval --validate-in-process --strictness-level
    10 --validate build/MW160_artefacts/Release/VST3/MW160.vst3`
-2. The "Plugin state restoration" group fails on `OverEasy` and/or
+2. The "Plugin state restoration" group fails on `softKnee` and/or
    `Stereo Link`. Reproduced across 3 random seeds.
 
 **Expected:** After `setStateInformation` with a previously captured
@@ -181,7 +181,7 @@ restore → verify).
 
 **Actual:** Float parameters (`threshold`, `ratio`, `outputGain`, `mix`)
 restore correctly. The two `juce::AudioParameterBool` parameters
-(`overEasy`, `stereoLink`) read back the *pre-restore mutated* random
+(`softKnee`, `stereoLink`) read back the *pre-restore mutated* random
 value rather than the captured value, e.g. expected 0, actual 0.163635 /
 0.435694 / 0.160072. The non-snapped intermediate values strongly
 suggest pluginval is reading the parameter via
@@ -228,7 +228,7 @@ The dev-agent should reproduce the bug with a small unit test that
 mimics pluginval's set → capture → mutate → restore cycle on each bool
 parameter and confirm round-trip equality. The fix is most likely to
 explicitly snap the bool atomics on restore, or to call
-`apvts.getParameter("overEasy")->setValueNotifyingHost(...)` in
+`apvts.getParameter("softKnee")->setValueNotifyingHost(...)` in
 `setStateInformation` for each parameter, instead of relying on
 `replaceState` alone.
 
@@ -308,20 +308,18 @@ preserved, new ones default), or the user sees a clear "preset
 incompatible" message.
 **Actual:** `getStateInformation` writes the bare APVTS state via
 `copyXmlToBinary` with no plugin version stamp. `setStateInformation`
-checks only the root tag name. There is no schema version field. If a
-future version renames `overEasy` → `softKnee` (which it must, per
-QA-TM-001 trademark scrub), every existing user preset will silently
-drop the soft-knee setting back to default and provide no diagnostic.
+checks only the root tag name. There is no schema version field. Future
+parameter layout changes will silently drop parameters from old presets
+with no diagnostic.
 **Location:** `src/PluginProcessor.cpp:210-222` and
 `src/PresetManager.cpp:73-98`
 **Recommendation:** Add a `<plugin version="1"/>` attribute to the root
 state tree before serializing. On restore, check the version and either
-migrate older states forward or warn loudly. This becomes acute when
-the trademark scrub (QA-TM-001) renames `overEasy` to `softKnee`.
+migrate older states forward or warn loudly.
 
 ---
 
-### QA-CONF-005: Parameter ID `overEasy` is brand-adjacent — schedule rename + state migration
+### QA-CONF-005: Parameter ID rename migration must land with QA-TM-001
 **Severity:** MEDIUM
 **Owner:** owner:dev-agent
 **Context / repro:** Inspect parameter IDs in `createParameterLayout`.
@@ -329,17 +327,18 @@ the trademark scrub (QA-TM-001) renames `overEasy` to `softKnee`.
 vocabulary in code, IDs, or strings. (Already filed as QA-TM-001 for
 the trademark surface; this entry is the *state-restoration* angle of
 the same rename.)
-**Actual:** Parameter ID is the literal string `overEasy`
-(`src/PluginProcessor.cpp:48`). When QA-TM-001 lands the rename to e.g.
-`softKnee`, every existing user preset will lose its setting because
-APVTS keys preset XML by parameter ID. There is no migration shim.
+**Actual:** The legacy brand-adjacent parameter ID
+(`src/PluginProcessor.cpp:48`) was serialized in existing user presets.
+The rename to `softKnee` required a migration shim: every existing user
+preset would otherwise lose its setting because APVTS keys preset XML
+by parameter ID.
 **Location:** `src/PluginProcessor.cpp:47-50`
-**Recommendation:** When the rename lands, `setStateInformation` should
-look for the legacy ID `overEasy` in the loaded XML and copy its value
-into the new ID before calling `replaceState`. This is a backwards
-compat shim, not a permanent path. Bumping `ParameterID{"...", 1}` to
-version 2 will not solve this — that JUCE versioning is for VST3
-parameter ID stability across hosts, not for state migration.
+**Recommendation:** `setStateInformation` should look for the legacy ID
+in the loaded XML and copy its value into the new `softKnee` ID before
+calling `replaceState`. This is a backwards compat shim, not a permanent
+path. Bumping `ParameterID{"...", 1}` to version 2 will not solve this
+— that JUCE versioning is for VST3 parameter ID stability across hosts,
+not for state migration.
 
 ---
 
@@ -394,12 +393,12 @@ with a fast log/exp approximation or a precomputed table.
 
 ## Out of scope for this agent (filed elsewhere)
 
-- The trademark scrub of `OverEasy`, `dbx 160A`, `Blackmer 200`, `DBX
-  160` references in code, comments, and parameter labels is
-  CRITICAL and is QA-TM-001. This conformance pass intentionally does
-  not re-file it. Note however that QA-CONF-005 above is the
-  *state-migration* component of the same rename and must be done
-  *with* the trademark scrub, not after it, or every user preset breaks.
+- The trademark scrub of brand/trademark references in code, comments,
+  and parameter labels is CRITICAL and is QA-TM-001. This conformance
+  pass intentionally does not re-file it. Note however that QA-CONF-005
+  above is the *state-migration* component of the same rename and must
+  be done *with* the trademark scrub, not after it, or every user
+  preset breaks.
 - Loading the VST3 in `juce::AudioPluginHost` was not attempted: the
   AudioPluginHost is not pre-built in this tree, only its source is
   vendored under

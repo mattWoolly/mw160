@@ -167,7 +167,7 @@ struct GoldenTestConfig
     float threshold_dB = -20.0f;
     float ratio = 4.0f;
     float outputGain_dB = 0.0f;
-    bool overEasy = false;
+    bool softKnee = false;
     float mix = 100.0f;
     float inputAmplitude = 0.0f;   // 0 = silence
     float inputFrequency = 1000.0f;
@@ -183,7 +183,7 @@ static std::vector<float> processConfig(const GoldenTestConfig& cfg,
     comp.setThreshold(cfg.threshold_dB);
     comp.setRatio(cfg.ratio);
     comp.setOutputGain(cfg.outputGain_dB);
-    comp.setOverEasy(cfg.overEasy);
+    comp.setSoftKnee(cfg.softKnee);
     comp.setMix(cfg.mix);
 
     std::vector<float> output(input.size());
@@ -248,7 +248,7 @@ struct StereoGoldenTestConfig
     float threshold_dB = -20.0f;
     float ratio = 4.0f;
     float outputGain_dB = 0.0f;
-    bool overEasy = false;
+    bool softKnee = false;
     float mix = 100.0f;
     float leftAmplitude = 0.0f;
     float rightAmplitude = 0.0f;
@@ -280,7 +280,7 @@ static void runStereoGoldenTest(const StereoGoldenTestConfig& cfg)
         comp->setThreshold(cfg.threshold_dB);
         comp->setRatio(cfg.ratio);
         comp->setOutputGain(cfg.outputGain_dB);
-        comp->setOverEasy(cfg.overEasy);
+        comp->setSoftKnee(cfg.softKnee);
         comp->setMix(cfg.mix);
     }
 
@@ -367,15 +367,15 @@ TEST_CASE("Golden: 1kHz sine, threshold -20, ratio 60:1 (limiter)",
     runGoldenTest(cfg);
 }
 
-TEST_CASE("Golden: 1kHz sine, threshold -20, ratio 4:1, OverEasy",
+TEST_CASE("Golden: 1kHz sine, threshold -20, ratio 4:1, soft knee",
           "[golden][regression]")
 {
     GoldenTestConfig cfg;
-    cfg.name = "sine_1k_thresh-20_ratio4_overeasy";
+    cfg.name = "sine_1k_thresh-20_ratio4_softknee";
     cfg.sampleRate = static_cast<float>(kSampleRate);
     cfg.threshold_dB = -20.0f;
     cfg.ratio = 4.0f;
-    cfg.overEasy = true;
+    cfg.softKnee = true;
     cfg.inputAmplitude = sineAmplitudeForRms_dBFS(-6.0f);
     cfg.durationSamples = kDuration;
     runGoldenTest(cfg);

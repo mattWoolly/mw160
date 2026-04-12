@@ -40,9 +40,9 @@ void Compressor::setOutputGain(float gain_dB)
     outputGainSmoother_.setTarget(std::pow(10.0f, gain_dB / 20.0f));
 }
 
-void Compressor::setOverEasy(bool enabled)
+void Compressor::setSoftKnee(bool enabled)
 {
-    overEasy_ = enabled;
+    softKnee_ = enabled;
 }
 
 void Compressor::setMix(float mixPercent)
@@ -76,7 +76,7 @@ float Compressor::applyCompression(float input, float rmsLinear)
                              : kSilenceFloor_dB;
 
     // Compute instantaneous gain reduction
-    const float kneeWidth = overEasy_ ? kOverEasyKneeWidth_dB : 0.0f;
+    const float kneeWidth = softKnee_ ? kSoftKneeWidth_dB : 0.0f;
     const float targetGR_dB = gainComputer_.computeGainReduction(rms_dB, threshold_dB, ratio, kneeWidth);
 
     // Smooth through ballistics envelope

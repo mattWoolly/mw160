@@ -134,7 +134,7 @@ TEST_CASE("VcaSaturation: moderate GR produces measurable distortion",
 TEST_CASE("VcaSaturation: 2nd harmonic dominates over 3rd",
           "[dsp][saturation]")
 {
-    // The Blackmer VCA's NPN/PNP asymmetry produces predominantly
+    // The discrete VCA's NPN/PNP asymmetry produces predominantly
     // even-order harmonics.  2nd harmonic should be significantly
     // larger than 3rd.
     const float amplitude = 0.5f;

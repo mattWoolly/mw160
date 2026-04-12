@@ -50,8 +50,8 @@ void PresetManager::applyFactoryPreset(int factoryIndex)
         param->setValueNotifyingHost(param->convertTo0to1(p.ratio));
     if (auto* param = apvts_.getParameter("outputGain"))
         param->setValueNotifyingHost(param->convertTo0to1(p.outputGain));
-    if (auto* param = apvts_.getParameter("overEasy"))
-        param->setValueNotifyingHost(p.overEasy ? 1.0f : 0.0f);
+    if (auto* param = apvts_.getParameter("softKnee"))
+        param->setValueNotifyingHost(p.softKnee ? 1.0f : 0.0f);
     if (auto* param = apvts_.getParameter("stereoLink"))
         param->setValueNotifyingHost(p.stereoLink ? 1.0f : 0.0f);
     if (auto* param = apvts_.getParameter("mix"))

@@ -79,7 +79,7 @@ void probe_static_gr_curve()
             c.setThreshold(thresh);
             c.setRatio(ratio);
             c.setOutputGain(0.0f);
-            c.setOverEasy(false);
+            c.setSoftKnee(false);
             c.setMix(100.0f);
 
             const float rmsTarget_dB = thresh + excess;
@@ -171,7 +171,7 @@ void probe_block_size_independence()
         c.setThreshold(-20.0f);
         c.setRatio(4.0f);
         c.setOutputGain(0.0f);
-        c.setOverEasy(false);
+        c.setSoftKnee(false);
         c.setMix(100.0f);
         std::vector<float> out(N);
         for (int i = 0; i < N; ++i)
@@ -208,7 +208,7 @@ void probe_block_size_independence_chunked()
         c.setThreshold(-20.0f);
         c.setRatio(4.0f);
         c.setOutputGain(0.0f);
-        c.setOverEasy(false);
+        c.setSoftKnee(false);
         c.setMix(100.0f);
         std::vector<float> out(N);
         int i = 0;
@@ -218,7 +218,7 @@ void probe_block_size_independence_chunked()
             c.setThreshold(-20.0f);
             c.setRatio(4.0f);
             c.setOutputGain(0.0f);
-            c.setOverEasy(false);
+            c.setSoftKnee(false);
             c.setMix(100.0f);
             for (int k = 0; k < n; ++k, ++i)
                 out[i] = c.processSample(input[i]);
@@ -293,13 +293,13 @@ void probe_denormals_nan()
 {
     hr("Denormals / NaN / Inf safety");
     constexpr double sr = 48000.0;
-    auto run = [&](const char* tag, const std::vector<float>& in, bool overEasy = false) {
+    auto run = [&](const char* tag, const std::vector<float>& in, bool softKnee = false) {
         mw160::Compressor c;
         c.prepare(sr, 512);
         c.setThreshold(-20.0f);
         c.setRatio(4.0f);
         c.setOutputGain(0.0f);
-        c.setOverEasy(overEasy);
+        c.setSoftKnee(softKnee);
         c.setMix(100.0f);
         bool any = false;
         float minOut = std::numeric_limits<float>::infinity();
@@ -476,7 +476,7 @@ void probe_thd_spectrum()
         c.setThreshold(thresh);
         c.setRatio(cfg.ratio);
         c.setOutputGain(0.0f);
-        c.setOverEasy(false);
+        c.setSoftKnee(false);
         c.setMix(100.0f);
 
         const float rmsTarget_dB = thresh + cfg.excess;

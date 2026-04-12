@@ -39,7 +39,7 @@ static void setupCompressor(mw160::Compressor& comp, float threshold, float rati
     comp.setThreshold(threshold);
     comp.setRatio(ratio);
     comp.setOutputGain(0.0f);
-    comp.setOverEasy(false);
+    comp.setSoftKnee(false);
 }
 
 // ---------------------------------------------------------------------------

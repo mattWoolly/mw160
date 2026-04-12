@@ -60,7 +60,7 @@ private:
     std::atomic<float>* thresholdParam_ = nullptr;
     std::atomic<float>* ratioParam_ = nullptr;
     std::atomic<float>* outputGainParam_ = nullptr;
-    std::atomic<float>* overEasyParam_ = nullptr;
+    std::atomic<float>* softKneeParam_ = nullptr;
     std::atomic<float>* stereoLinkParam_ = nullptr;
     std::atomic<float>* mixParam_ = nullptr;
     std::atomic<float>* bypassParam_ = nullptr;

@@ -42,7 +42,7 @@ static std::vector<float> processWithMix(float mixPercent, float threshold, floa
     comp.setThreshold(threshold);
     comp.setRatio(ratio);
     comp.setOutputGain(outputGain_dB);
-    comp.setOverEasy(false);
+    comp.setSoftKnee(false);
     comp.setMix(mixPercent);
 
     std::vector<float> output(input.size());
@@ -71,7 +71,7 @@ TEST_CASE("Mix: 100% -> output equals fully compressed signal",
     compRef.setThreshold(threshold);
     compRef.setRatio(ratio);
     compRef.setOutputGain(0.0f);
-    compRef.setOverEasy(false);
+    compRef.setSoftKnee(false);
     // Do NOT call setMix — default should be 100%
 
     std::vector<float> outputDefault(input.size());

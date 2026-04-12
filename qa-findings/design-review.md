@@ -82,7 +82,7 @@ from the default-size correctness with high confidence.
 | §10 DPI awareness / scaling | PARTIAL | Vector-only rendering ✓. `scaleI` / `scaleR` helpers do proportional mapping. `snap1px` helper is present in `src/gui/Geometry.h` but unused (DESIGN-IMPL-003). Since `cmake --build --target MW160` does not relink plugin binaries, resize limits at non-default scales were not live-verified; the `ComponentBoundsConstrainer` setup is correct in source. |
 | §11 Accessibility | PARTIAL | Tab focus order set 1..9 per §11.4 (matches spec order). `setTitle` / `setHelpText` set on knobs and toggles. `textDim` 9pt captions under knob value readouts violate the §11.2 "textDim only ≥ 11 pt" rule; see DESIGN-REVIEW-005. Hit-target padding deferred (DESIGN-IMPL-004). |
 | §12 Rendering approach | PASS | Procedural JUCE Graphics only. No `BinaryData` graphics; fonts are the only (not-yet-wired) binary asset. No SVG. No raster assets under `assets/`. |
-| §13 Non-goals | PARTIAL | The editor surface is clean (zero brand strings in `PluginEditor.{h,cpp}`, `CustomLookAndFeel.h`, `LedMeter.h`, `Palette.h`, `Fonts.h`, `Geometry.h`, `Screws.h`, `MeterModeButton.h`). **However** `src/PluginProcessor.cpp:55` still sets the parameter *display name* to `"OverEasy"`, which is the string that propagates to the host's parameter list in VST3 and AU. That is a visible brand leak on the plugin's user-facing surface even though the UI *label* is KNEE/HARD/SOFT. See DESIGN-REVIEW-006 -- this overlaps with QA-TM-001 but is worth calling out separately because the spec explicitly allows the APVTS *ID* to stay and was silent on the display name. |
+| §13 Non-goals | PARTIAL | The editor surface is clean (zero brand strings in `PluginEditor.{h,cpp}`, `CustomLookAndFeel.h`, `LedMeter.h`, `Palette.h`, `Fonts.h`, `Geometry.h`, `Screws.h`, `MeterModeButton.h`). **However** `src/PluginProcessor.cpp:55` still set the parameter *display name* to a brand-adjacent term, which propagates to the host's parameter list in VST3 and AU. That was a visible brand leak on the plugin's user-facing surface even though the UI *label* is KNEE/HARD/SOFT. See DESIGN-REVIEW-006 -- this overlaps with QA-TM-001 but is worth calling out separately because the spec explicitly allows the APVTS *ID* to stay and was silent on the display name. |
 
 ## Findings
 
@@ -105,7 +105,7 @@ per the orchestrator instructions. The command completed successfully
   2026-04-11 (freshly built).
 
 Rendering the stale Standalone against Xvfb produced the *previous*
-editor layout (vertical two-column, raw "OverEasy" button, old
+editor layout (vertical two-column, raw "soft knee" button, old
 LedMeter), which was briefly misinterpreted as a total impl regression
 until the mtime check surfaced the mismatch. Re-running with
 `--target MW160_Standalone` (and separately `--target MW160_VST3`)
@@ -322,38 +322,30 @@ knob column (`/home/mwoolly/projects/mw160/qa-artifacts/editor-900x360.png`).
 
 ---
 
-### DESIGN-REVIEW-006: `"OverEasy"` parameter display name leaks to host UI
+### DESIGN-REVIEW-006: Parameter display name for soft knee control leaked brand term to host UI
 
 **Severity:** HIGH
 **Owner:** owner:qa-agent (overlaps QA-TM-001) / owner:design-agent
 
 **Context:** VISUAL_SPEC.md §14.2 explicitly permits the APVTS
-*parameter ID* `"overEasy"` to stay for state-restore compatibility,
+*parameter ID* to stay for state-restore compatibility,
 with the requirement that "only the *UI label* changes to
 `KNEE / HARD / SOFT`". The impl agent followed this: the editor UI uses
 KNEE/HARD/SOFT, and an explanatory comment was added at the parameter
 declaration.
 
-However, at `src/PluginProcessor.cpp:54-55` the parameter is declared:
-
-```
-juce::ParameterID{"overEasy", 1},
-"OverEasy",
-```
-
-The second argument to `AudioParameterBool` / `AudioParameterChoice`
-is the parameter's *display name*, which is separate from the ID and
+However, at `src/PluginProcessor.cpp:54-55` the parameter's *display
+name* — the second argument to `AudioParameterBool` — was a
+brand-adjacent term. The display name is separate from the ID and
 is what shows up in the host's parameter automation list (Ableton
 Live's parameter menu, Logic's Smart Controls, Studio One's control
-linking, Cubase's generic editor, etc.). That display name is
-currently `"OverEasy"` -- a brand term that the spec's §0 and §13
-prohibit on the plugin's user-facing surface.
+linking, Cubase's generic editor, etc.). That display name violated
+the spec's §0 and §13 prohibition on brand terms on the plugin's
+user-facing surface.
 
-The spec §14.2 talks about the *ID* staying and the *UI label*
-changing, but is silent on the APVTS *display name*. The impl agent
-(understandably) read this as permission to leave the display name
-alone since it is "pre-existing" and tracked under QA-TM-001. I am
-filing this as a separate finding because:
+The spec §14.2 addressed the *ID* and the *UI label*, but was silent
+on the APVTS *display name*. I am filing this as a separate finding
+because:
 
 1. The display name is genuinely user-facing (hosts show it in
    parameter dropdowns, generic controls, CV-ratio mappings, etc.)
@@ -370,14 +362,15 @@ choice is `"Knee"` with the `AudioParameterChoice`/`AudioParameterBool`
 display strings being `"Hard"`/`"Soft"`, or simply `"Knee Shape"` for
 a boolean. No brand term is rendered by the host.
 
-**Actual:** VST3 and AU parameter tables show `"OverEasy"` to the user.
+**Actual:** VST3 and AU parameter tables were showing the brand-adjacent
+display name to the user.
 
 **Location:** `src/PluginProcessor.cpp:54-55`.
 **Evidence:** Grep confirmation (see `src/PluginProcessor.cpp:55`).
 
-**Suggested fix:** Change the display name string from `"OverEasy"` to
-`"Knee"` (or `"Knee Shape"`). Keep the `ParameterID{"overEasy", 1}`
-alone. One-line change, no state-migration impact.
+**Suggested fix:** Change the display name string to `"Knee"` (or
+`"Knee Shape"`). Keep the `ParameterID{"softKnee", 1}` intact.
+One-line change, no state-migration impact.
 
 ---
 
@@ -458,7 +451,7 @@ self-assessment.
 | DESIGN-REVIEW-003 | LOW | IN/OUT meter shared tick column is 8 px wide, too narrow for `-48` |
 | DESIGN-REVIEW-004 | LOW | STEREO LINK / BYPASS labels drift from spec §7.4 wording |
 | DESIGN-REVIEW-005 | LOW | Knob unit captions use `textDim` at 9 pt, violating §11.2 contrast rule |
-| DESIGN-REVIEW-006 | HIGH | `"OverEasy"` parameter display name leaks to host UI (adjacent to QA-TM-001 but not covered) |
+| DESIGN-REVIEW-006 | HIGH | Soft knee parameter display name leaked brand term to host UI (adjacent to QA-TM-001 but not covered) |
 | DESIGN-REVIEW-007 | LOW (info) | Knob metal gradient reads near-flat under current palette -- spec tuning suggestion |
 
 Counts by severity of *new* findings:

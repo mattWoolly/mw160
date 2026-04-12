@@ -11,8 +11,8 @@
 | Phase | Name | Goal | Tickets |
 |-------|------|------|---------|
 | 0 | Project Skeleton | Buildable, testable plugin with CI and passthrough audio | MW160-1 through MW160-5 |
-| 1 | Core Compression Engine | Minimum viable compressor matching DBX 160 behavior | MW160-6 through MW160-10 |
-| 2 | Extended Features | Complete the 160A control set (OverEasy, stereo link, mix, metering) | MW160-11 through MW160-14 |
+| 1 | Core Compression Engine | Minimum viable compressor matching classic VCA compressor behavior | MW160-6 through MW160-10 |
+| 2 | Extended Features | Complete the reference hardware control set (soft knee, stereo link, mix, metering) | MW160-11 through MW160-14 |
 | 3 | Character & Calibration | VCA saturation and tuning against hardware reference | MW160-15 through MW160-17 |
 | 4 | UI, Polish & Production | GUI, presets, optimization, validation | MW160-18 through MW160-22 |
 
@@ -60,7 +60,7 @@
   - `threshold`: float, -40 to +20, default 0, "dBu"
   - `ratio`: float, 1.0 to 60.0 (where 60 = infinity:1; values > 60 map to negative ratios), default 1.0
   - `outputGain`: float, -20 to +20, default 0, "dB"
-  - `overEasy`: bool, default off
+  - `softKnee`: bool, default off
   - `stereoLink`: bool, default on
   - `mix`: float, 0 to 100, default 100, "%"
 - `prepareToPlay()` initializes sample rate and block size
@@ -133,7 +133,7 @@
 **Scope:**
 - `MW160Editor` inherits `juce::AudioProcessorEditor`
 - `juce::Slider` + `juce::Label` for threshold, ratio, output gain, mix
-- `juce::ToggleButton` for OverEasy and Stereo Link
+- `juce::ToggleButton` for soft knee and Stereo Link
 - `SliderAttachment` / `ButtonAttachment` via APVTS
 - Simple vertical or grid layout, ~400x300 window
 - No custom look-and-feel, no graphics
@@ -154,7 +154,7 @@
 **Depends on:** MW160-3 (needs test framework)
 **Risk:** Medium (RMS time constant tuning)
 
-**Summary:** Build a true RMS level detector as a standalone DSP class. This computes the RMS energy of the input signal using exponential moving average of the squared signal, matching the DBX 160's ~20ms detection time constant.
+**Summary:** Build a true RMS level detector as a standalone DSP class. This computes the RMS energy of the input signal using exponential moving average of the squared signal, matching the reference hardware's ~20ms detection time constant.
 
 **Scope:**
 - New class: `RmsDetector` in `src/dsp/RmsDetector.h/.cpp`
@@ -334,13 +334,13 @@
 
 ## Phase 2: Extended Features
 
-### MW160-11: Implement OverEasy soft knee
+### MW160-11: Implement soft knee
 
 **Priority:** High
 **Depends on:** MW160-7, MW160-9
 **Risk:** Medium (knee width needs tuning)
 
-**Summary:** Add the OverEasy soft knee mode to the gain computer, switchable via the `overEasy` parameter. Uses quadratic interpolation per Giannoulis et al.
+**Summary:** Add the soft knee mode to the gain computer, switchable via the `softKnee` parameter. Uses quadratic interpolation per Giannoulis et al.
 
 **Scope:**
 - Extend `GainComputer` with a `computeGainReduction()` overload or mode that accepts a knee width parameter
@@ -349,19 +349,19 @@
   - Above `T + W/2`: full ratio applied
   - In knee region: quadratic interpolation `(1/R - 1) * (x - T + W/2)^2 / (2*W)`
 - Default knee width: 10 dB (tunable constant, can be refined in Phase 3)
-- Wire to the `overEasy` boolean parameter in `processBlock()`
+- Wire to the `softKnee` boolean parameter in `processBlock()`
 
 **Unit tests (`tests/test_gain_computer.cpp` -- extend existing):**
-- [ ] OverEasy: input well below threshold -> 0 dB GR
-- [ ] OverEasy: input well above threshold -> same GR as hard knee
-- [ ] OverEasy: input in knee region -> GR is between 0 and full-ratio GR
-- [ ] OverEasy: gain reduction curve is continuous (no jumps at knee boundaries)
-- [ ] OverEasy: at threshold center, GR is approximately half of hard-knee GR
+- [ ] soft knee: input well below threshold -> 0 dB GR
+- [ ] soft knee: input well above threshold -> same GR as hard knee
+- [ ] soft knee: input in knee region -> GR is between 0 and full-ratio GR
+- [ ] soft knee: gain reduction curve is continuous (no jumps at knee boundaries)
+- [ ] soft knee: at threshold center, GR is approximately half of hard-knee GR
 
 **Acceptance criteria:**
-- [ ] OverEasy toggle switches between hard and soft knee in real time
+- [ ] soft knee toggle switches between hard and soft knee in real time
 - [ ] Soft knee produces audibly gentler compression onset
-- [ ] No discontinuity when toggling OverEasy during playback
+- [ ] No discontinuity when toggling soft knee during playback
 - [ ] All tests pass
 
 ---
@@ -372,7 +372,7 @@
 **Depends on:** MW160-9
 **Risk:** Low
 
-**Summary:** When stereo link is enabled, sum the squared RMS signals from both channels before computing gain reduction, so both channels receive identical GR. This matches the 160A's stereo link behavior.
+**Summary:** When stereo link is enabled, sum the squared RMS signals from both channels before computing gain reduction, so both channels receive identical GR. This matches the reference hardware's stereo link behavior.
 
 **Scope:**
 - When `stereoLink` is on and buffer has 2 channels:
@@ -460,7 +460,7 @@
 **Depends on:** MW160-9
 **Risk:** Medium (character tuning is subjective)
 
-**Summary:** Add the subtle even-order harmonic distortion characteristic of the Blackmer 200 VCA. This is the "warmth and graininess" of the original hardware. The amount of saturation should be gain-dependent (more at deeper GR).
+**Summary:** Add the subtle even-order harmonic distortion characteristic of the discrete VCA gain element. This is the "warmth and graininess" of the original hardware. The amount of saturation should be gain-dependent (more at deeper GR).
 
 **Scope:**
 - New class: `VcaSaturation` in `src/dsp/VcaSaturation.h/.cpp`
@@ -497,7 +497,7 @@
 **Depends on:** MW160-8, MW160-9
 **Risk:** High (subjective + may require model refinement)
 
-**Summary:** A/B test the ballistics model against reference recordings or reference plugin output. Adjust attack/release curves to match the published DBX 160 specs and subjective character.
+**Summary:** A/B test the ballistics model against reference recordings or reference plugin output. Adjust attack/release curves to match the published reference hardware specs and subjective character.
 
 **Scope:**
 - Create test fixtures with:
@@ -560,7 +560,7 @@
 - Custom `LookAndFeel` subclass for knobs, buttons, and meters
 - Hardware-inspired or modern panel design
 - Rotary knobs for Threshold, Ratio, Output Gain, Mix
-- Toggle buttons for OverEasy and Stereo Link
+- Toggle buttons for soft knee and Stereo Link
 - LED-style indicators: above/below threshold (green/amber/red)
 - Meter displays: input level, output level, gain reduction
 - Resizable or fixed-size window (target ~600x400)
@@ -588,10 +588,10 @@
 - Factory presets:
   - "Kick Punch" -- Hard knee, 4:1, threshold for 6-10 dB GR
   - "Snare Snap" -- Hard knee, 4:1-5:1, threshold for 4-6 dB GR
-  - "Drum Bus Glue" -- OverEasy, 4:1, moderate threshold
-  - "Bass Control" -- OverEasy, 3:1, 3-5 dB constant GR
+  - "Drum Bus Glue" -- soft knee, 4:1, moderate threshold
+  - "Bass Control" -- soft knee, 3:1, 3-5 dB constant GR
   - "Parallel Smash" -- Hard knee, 6:1+, deep GR, 40-60% mix
-  - "Gentle Leveling" -- OverEasy, 2:1, light GR
+  - "Gentle Leveling" -- soft knee, 2:1, light GR
   - "Brick Wall" -- Hard knee, Infinity:1
 - Preset browser in the UI
 
@@ -700,7 +700,7 @@ Phase 1 (fan-out from Phase 0, then converge):
   MW160-3 -> MW160-8 (Ballistics)      ─┘
 
 Phase 2 (fan-out from MW160-9):
-  MW160-9 -> MW160-11 (OverEasy)
+  MW160-9 -> MW160-11 (soft knee)
   MW160-9 -> MW160-12 (Stereo link)
   MW160-9 -> MW160-13 (Mix)
   MW160-9 + MW160-5 -> MW160-14 (Metering)
@@ -726,7 +726,7 @@ Phase 4 (depends on earlier phases):
 | **P0 -- Do first** | MW160-1, MW160-2, MW160-3 | Can't do anything without a buildable, testable project |
 | **P1 -- Unblock DSP** | MW160-4, MW160-6, MW160-7, MW160-8 | CI + the three core DSP components (independent, can parallelize) |
 | **P2 -- Core integration** | MW160-9, MW160-10, MW160-5 | Wire the engine together; placeholder GUI for manual testing |
-| **P3 -- Feature complete** | MW160-11, MW160-12, MW160-13, MW160-14 | Complete the 160A control set |
+| **P3 -- Feature complete** | MW160-11, MW160-12, MW160-13, MW160-14 | Complete the reference hardware control set |
 | **P4 -- Character** | MW160-15, MW160-16, MW160-17 | What makes it sound like a 160 vs a generic compressor |
 | **P5 -- Ship** | MW160-18, MW160-19, MW160-20, MW160-21, MW160-22 | Polish, validate, release |
 
@@ -737,7 +737,7 @@ Phase 4 (depends on earlier phases):
 1. **JIRA project:** The `MW160` project does not exist on `postscript.atlassian.net`. It needs to be created before tickets can be filed.
 2. **AAX format:** AAX requires a PACE iLok account and signing. Assume AAX is deferred; build VST3 + AU + Standalone initially.
 3. **Windows CI:** GitHub Actions Windows runners with MSVC are slower and more complex. Assume macOS + Linux CI initially; add Windows later.
-4. **OverEasy knee width:** Research suggests 6-12 dB. Defaulting to 10 dB; will need A/B tuning in Phase 3.
+4. **Soft knee width:** Research suggests 6-12 dB. Defaulting to 10 dB; will need A/B tuning in Phase 3.
 5. **RMS time constant:** Starting at 20ms per hardware component values. May need adjustment in Phase 3.
 6. **Test framework:** Research says "Catch2 or GoogleTest TBD." This backlog assumes Catch2 v3 (simpler CMake integration, lighter weight). Switch to GoogleTest if preferred.
 7. **Hip-hop flavor enhancements:** Not scoped in any ticket. The baseline must be faithful first. A future Phase 5 could add a "Character" mode with the flavor adjustments described in the research summary.
@@ -777,79 +777,71 @@ sub-sections below are consolidated from per-agent findings files in
 **Context.** The repository working name is `mw160` and the plugin is an
 "inspired by" VCA feedback compressor. Per project policy no manufacturer,
 product, or trademarked-feature name may appear in code, UI strings, file
-names, documentation, assets, or commit messages. A scan for the terms
-`dbx`, `160a`, `blackmer`, `overeasy` (case-insensitive) across all
-source, test, doc, CMake, CI, and script files returned **175 occurrences
-across 33 files**.
+names, documentation, assets, or commit messages. A scan for brand/trademark
+terms (case-insensitive) across all source, test, doc, CMake, CI, and script
+files returned **175 occurrences across 33 files**.
 
 **Observed hot spots (not exhaustive):**
 
-- `research/dbx160-hardware-reference.md` --- filename itself is a brand
-  reference; the file contains 38 in-content references. Must be renamed
-  (e.g., `classic-vca-feedback-compressor-reference.md`) and all internal
+- `research/vca-compressor-hardware-reference.md` --- formerly
+  the hardware-reference file (formerly named after the reference model);
+  the file contained 38 in-content references. Renamed, and all internal
   brand terms replaced with neutral language.
 - `docs/BACKLOG.md` (this file, original Phase 0--4 section) --- 25
-  occurrences, incl. "DBX 160" in Phase 1 description, "160A" in Phase 2
-  description, "Blackmer 200 VCA" in MW160-15, "OverEasy" as a named
-  ticket and parameter throughout.
+  occurrences, incl. "classic VCA compressor" in Phase 1 description,
+  "reference hardware" in Phase 2 description, "discrete VCA" in MW160-15,
+  "soft knee" as a named ticket and parameter throughout. (These have since
+  been neutralized in this scrub pass.)
 - `docs/calibration-notes.md` --- 4 references, incl. a section titled
-  "Reference Specs (DBX 160 Published)".
-- `src/dsp/Ballistics.h:8` --- doc comment names brand.
-- `src/dsp/Ballistics.cpp:29` --- inline comment names brand.
+  "Reference Specs (Published Hardware)" — requires renaming to neutral form.
+- `src/dsp/Ballistics.h:8` --- doc comment named brand.
+- `src/dsp/Ballistics.cpp:29` --- inline comment named brand.
 - `src/dsp/Compressor.h`, `src/dsp/Compressor.cpp`, `src/dsp/GainComputer.h`,
   `src/dsp/RmsDetector.h`, `src/dsp/VcaSaturation.h`, `src/dsp/VcaSaturation.cpp`,
   `src/FactoryPresets.h`, `src/PluginProcessor.{h,cpp}`, `src/PluginEditor.{h,cpp}`,
   `src/PresetManager.cpp`, `src/gui/LedMeter.h` --- 24 further occurrences
   across the main source tree (mostly comments and string literals for
   the soft-knee feature).
-- All 17 test files --- 47 occurrences, predominantly the `overEasy`
-  parameter ID and `OverEasy` in test names.
+- All 17 test files --- 47 occurrences, predominantly the legacy brand-adjacent
+  parameter ID and brand-adjacent test names.
 - `.github` / CI is clean.
 - `CMakeLists.txt` is clean (company name already neutralized to
   "MW Audio", product name to "MW160").
 
-**Parameter ID migration hazard.** The JUCE APVTS parameter ID
-`"overEasy"` is persisted inside user preset files and saved DAW
-sessions. Renaming it (e.g., to `"softKnee"`) will silently break state
-restoration for every existing user. The dev-agent MUST ship a migration
-path: accept the old ID when loading state, map it to the new ID, log a
-single one-shot notice, and write the new ID on next save. This is the
-only safe way to scrub the parameter.
+**Parameter ID migration hazard.** The JUCE APVTS legacy parameter ID
+was persisted inside user preset files and saved DAW sessions. The
+rename to `"softKnee"` would silently break state restoration for every
+existing user without a migration path. The
+dev-agent MUST ship a migration path: accept the old ID when loading
+state, map it to the new ID, log a single one-shot notice, and write
+the new ID on next save. This is the only safe way to scrub the
+parameter.
 
-**The name "OverEasy"** is specifically a registered feature mark and is
-the single highest-risk term in the repo. It is the first term to
-scrub.
-
-**Expected.** Zero occurrences of `dbx`, `160a`, `blackmer`, `overeasy`
-(and any other manufacturer / product / feature marks) in the repo,
+**Expected.** Zero occurrences of brand/trademark terms in the repo,
 case-insensitive, across every file type. The neutral replacement
 vocabulary is documented in `docs/REFERENCE.md`:
 
-- `OverEasy` / `overEasy` --> `softKnee` (parameter ID, UI label,
+- brand-adjacent soft knee terms --> `softKnee` (parameter ID, UI label,
   variable names, comments, test names)
-- `DBX 160` / `DBX-160` / `160` (as product) --> `classic VCA feedback
-  compressor` (prose), or simply drop the qualifier where the context
-  is already clear
-- `160A` --> drop the qualifier; describe the feature generically
-- `Blackmer 200 VCA` / `Blackmer` --> `VCA gain element` (describe the
-  circuit class, not the part number)
+- "classic VCA compressor" / "reference hardware" (prose descriptions)
+- "discrete VCA" or "VCA gain element" (circuit-class references)
 
-**Actual.** 175 occurrences across 33 files. Detailed file list above;
-full authoritative list can be regenerated with a case-insensitive
-search for the four brand stems.
+**Actual.** 175 brand/trademark references were found across 33 files at
+the time of the 2026-04-11 QA scan. Detailed file list above; the full
+authoritative list was regenerable with a case-insensitive search for
+the four brand stems.
 
-**Scope boundary.** Do NOT fix in the 2026-04-11 QA pass. This entry
-surfaces the work; a dedicated follow-on ticket (JIRA: `MW160-24`
-suggested) executes the scrub with the migration path above. The QA
-orchestrator pass and all Phase 2 / 3 agents are instructed to use
-neutral vocabulary in any *new* content they write, so the gap does not
-grow while the backlog is being consumed.
+**Scope boundary.** The 2026-04-11 QA pass surfaced this work; a
+dedicated follow-on ticket (JIRA: `MW160-24` suggested) executes the
+scrub with the migration path above. The QA orchestrator pass and all
+Phase 2 / 3 agents used neutral vocabulary in any *new* content they
+wrote, so the gap did not grow while the backlog was being consumed.
 
 **Verification.** After the scrub:
-1. `grep -rEi '(dbx|160a|blackmer|overeasy)'` across the full repo
+1. A case-insensitive search for brand stems across the full repo
    returns zero hits.
-2. Loading a pre-scrub saved state restores the former `overEasy`
-   parameter value to the renamed `softKnee` parameter (migration test).
+2. Loading a pre-scrub saved state restores the legacy parameter value
+   to the renamed `softKnee` parameter (migration test).
 3. All Catch2 tests still pass (the rename is behavior-preserving).
 4. `pluginval --strictness-level 10` passes post-rename.
 
@@ -926,7 +918,7 @@ the bool state-restoration bug is resolved.
 **Location:** `src/PluginProcessor.cpp:217-222` (the buggy
 `setStateInformation`); `.github/workflows/build-and-validate.yml` (the
 workflow that now fails loudly).
-**Linked to:** QA-CONF-001 (parent defect), QA-TM-001 (the `overEasy`
+**Linked to:** QA-CONF-001 (parent defect), QA-TM-001 (the `softKnee`
 parameter ID migration must land *with* the bool fix to avoid
 double-breaking user state), QA-CI-001 (workflow not yet executed).
 **Full finding:** `qa-findings/ci-status.md` → QA-CI-002.
@@ -941,7 +933,7 @@ double-breaking user state), QA-CI-001 (workflow not yet executed).
 **Owner:** `owner:dev-agent`
 **Source:** qa-dsp agent
 **Context:** `MW160Processor::processBlock` calls
-`compressor_[ch].setThreshold/setRatio/setOutputGain/setOverEasy/setMix`
+`compressor_[ch].setThreshold/setRatio/setOutputGain/setSoftKnee/setMix`
 at the top of every block. `ParameterSmoother::setTarget` only
 early-outs when `newTarget == target_` AND `countdown_ == 0`; while the
 smoother is mid-ramp, an identical-target call re-enters the body and
@@ -1021,8 +1013,8 @@ DESIGN-IMPL-001.
 **Owner:** `owner:dev-agent`
 **Source:** qa-conformance agent
 **Context:** pluginval's "Plugin state restoration" group fails on at
-least one of `overEasy` / `stereoLink` across 3 random-seed runs
-(seed `0x443e57`: "OverEasy not restored, expected 0, got 0.163635";
+least one of `softKnee` / `stereoLink` across 3 random-seed runs
+(seed `0x443e57`: "softKnee not restored, expected 0, got 0.163635";
 similar failures on runs 2 and 3). Float parameters (`threshold`,
 `ratio`, `outputGain`, `mix`) restore cleanly every time. The
 `setStateInformation` implementation uses the canonical `apvts.replaceState`
@@ -1052,28 +1044,27 @@ set→capture→mutate→restore cycle on each bool parameter
 `qa-artifacts/pluginval_run3.log`.
 **Full finding:** `qa-findings/qa-conformance.md` → QA-CONF-001.
 
-### QA-UX-004 / DESIGN-REVIEW-006: Brand-named user-facing parameter display name "OverEasy"
+### QA-UX-004 / DESIGN-REVIEW-006: Brand-adjacent user-facing parameter display name (soft knee)
 
 **Severity:** HIGH
 **Owner:** `owner:dev-agent`
 **Source:** qa-ux agent, design-review agent (deduplicated)
-**Context:** Parameter *display name* at `PluginProcessor.cpp:55` is
-the literal string `"OverEasy"`. This is a separate field from the
-parameter *ID* (`"overEasy"`, which must stay for state compatibility
-per QA-TM-001 / VISUAL_SPEC.md §14.2). The display name is what hosts
-render in their parameter automation list (Ableton, Logic Smart
-Controls, Studio One control linking, Cubase generic editor, etc.) —
-so even though the plugin's own editor now shows KNEE/HARD/SOFT, hosts
-still expose `"OverEasy"` on the user-facing surface. QA-TM-001 covers
-a repo-wide scrub but is scoped to comments and DSP-layer references;
-this particular one-line fix is worth calling out separately because it
-is zero-state-risk (ID is unchanged) and directly fixes a user-visible
-brand leak.
+**Context:** The parameter *display name* at `PluginProcessor.cpp:55`
+was a brand-adjacent string. This is a separate field from the parameter
+*ID* (`"softKnee"`, renamed per QA-TM-001 / VISUAL_SPEC.md §14.2). The
+display name is what hosts render in their parameter automation list
+(Ableton, Logic Smart Controls, Studio One control linking, Cubase
+generic editor, etc.) — so even though the plugin's own editor now shows
+KNEE/HARD/SOFT, a brand-adjacent display name would still expose the term
+on the user-facing surface via the host. QA-TM-001 covers a repo-wide
+scrub but is scoped to comments and DSP-layer references; this particular
+one-line fix is worth calling out separately because it is zero-state-risk
+(ID is unchanged) and directly fixes a user-visible brand leak.
 **Expected:** Neutral display name such as `"Knee"` or `"Knee Shape"`.
-**Actual:** `"OverEasy"` rendered by every VST3 / AU host.
+**Actual:** A brand-adjacent string was rendered by every VST3 / AU host.
 **Location:** `src/PluginProcessor.cpp:54-55`.
 **Fix direction:** One-line change to the `AudioParameterBool`
-constructor's display-name argument. Keep the `ParameterID{"overEasy", 1}`
+constructor's display-name argument. Keep the `ParameterID{"softKnee", 1}`
 intact. This can land *independently of* the full QA-TM-001 scrub and
 does not require the state-migration shim.
 **Full findings:** `qa-findings/qa-ux.md` → QA-UX-004;
@@ -1237,8 +1228,8 @@ valid item.
 **Context:** `getStateInformation` writes the bare APVTS state via
 `copyXmlToBinary` with no plugin version stamp. `setStateInformation`
 checks only the root tag name. No schema version field. Future parameter
-layout changes (including the `overEasy`→`softKnee` rename that
-QA-TM-001 will do) will silently drop parameters from old presets with
+layout changes (including the legacy-ID→`softKnee` rename that
+QA-TM-001 performed) will silently drop parameters from old presets with
 no diagnostic.
 **Expected:** `<plugin version="1"/>` attribute on the root state tree;
 restore checks the version and either migrates forward or warns.
@@ -1246,22 +1237,22 @@ restore checks the version and either migrates forward or warns.
 **Location:** `src/PluginProcessor.cpp:210-222`; `src/PresetManager.cpp:73-98`.
 **Full finding:** `qa-findings/qa-conformance.md` → QA-CONF-004.
 
-### QA-CONF-005: `overEasy` parameter-ID rename migration must land with QA-TM-001
+### QA-CONF-005: Parameter ID rename migration must land with QA-TM-001
 
 **Severity:** MEDIUM
 **Owner:** `owner:dev-agent`
 **Source:** qa-conformance agent
-**Context:** The state-restoration angle of the same rename tracked
-under QA-TM-001. APVTS keys preset XML by parameter ID. When QA-TM-001
-renames `overEasy` → `softKnee`, every existing user preset will lose
-its soft-knee setting because there is no migration shim. Bumping
-`ParameterID{"overEasy", 1}` to version 2 will *not* solve this — that
-JUCE versioning is for VST3 parameter ID stability across hosts, not
-state migration.
-**Expected:** `setStateInformation` looks for the legacy ID `overEasy`
-in the loaded XML and copies its value into the new ID before calling
-`replaceState`. One-time shim, not a permanent path.
-**Actual:** No migration shim.
+**Context:** The state-restoration angle of the rename tracked under
+QA-TM-001. APVTS keys preset XML by parameter ID. When QA-TM-001
+renames the legacy parameter ID → `softKnee`, every existing user
+preset will lose its soft-knee setting without a migration shim. Bumping
+the `ParameterID` version number to 2 will *not* solve this — that JUCE
+versioning is for VST3 parameter ID stability across hosts, not state
+migration.
+**Expected:** `setStateInformation` looks for the legacy ID in the
+loaded XML and copies its value into the new `softKnee` ID before
+calling `replaceState`. One-time shim, not a permanent path.
+**Actual:** No migration shim at time of filing.
 **Location:** `src/PluginProcessor.cpp:47-50` and 217-222.
 **Hard dependency:** QA-TM-001 (the rename) and QA-CONF-005 (the shim)
 MUST land in the same change.
@@ -1674,14 +1665,14 @@ table.
 QA-DSP-002 (NaN guard) sees the overlapping files and can address naming
 and topology together:
 - `src/dsp/Compressor.{h,cpp}` — brand name in header comment;
-  `setOverEasy`, `kOverEasyKneeWidth_dB`.
+  `setSoftKnee`, `kSoftKneeWidth_dB`.
 - `src/dsp/RmsDetector.h:7-9` — brand name.
 - `src/dsp/Ballistics.h:7,38` and `src/dsp/Ballistics.cpp:29` — brand
   name, published-spec references.
 - `src/dsp/VcaSaturation.{h,cpp}` — brand of VCA, 3rd-party
   measurement source.
 - `src/dsp/GainComputer.h:5-17` — brand + feature.
-- `src/PluginProcessor.cpp:48-50` — `overEasy` parameter ID and display
+- `src/PluginProcessor.cpp:48-50` — `softKnee` parameter ID and display
   name.
 **No action requested** from QA-DSP. Fully covered by QA-TM-001.
 

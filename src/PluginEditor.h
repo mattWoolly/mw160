@@ -70,10 +70,8 @@ private:
 
     // --- Toggle switches (KNEE / STEREO LINK / BYPASS) ---
     //
-    // The KNEE switch's APVTS parameter ID remains "overEasy" for state
-    // restore compatibility -- see the note at the parameter declaration
-    // in `PluginProcessor.cpp`. The UI label is HARD / SOFT per
-    // VISUAL_SPEC.md §7.4.
+    // The KNEE switch uses parameter ID "softKnee". The UI label is
+    // HARD / SOFT per VISUAL_SPEC.md §7.4.
     juce::ToggleButton kneeButton       { "SOFT" };
     juce::ToggleButton stereoLinkButton { "ON" };
     juce::ToggleButton bypassButton     { "ON" };

@@ -115,7 +115,7 @@ TEST_CASE("QA-UX-002: full Compressor with Brick Wall preset clamps RMS output n
     comp.setThreshold(threshold_dB);
     comp.setRatio(ratio);
     comp.setOutputGain(0.0f);
-    comp.setOverEasy(false);
+    comp.setSoftKnee(false);
     comp.setMix(100.0f);
 
     // Process 1 second of audio so the detector + ballistics + parameter

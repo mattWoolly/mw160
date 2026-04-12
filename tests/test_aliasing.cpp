@@ -176,7 +176,7 @@ TEST_CASE("Aliasing: full compressor chain aliased harmonics at 44.1 kHz",
     comp.setThreshold(-20.0f);
     comp.setRatio(8.0f);        // heavy compression for maximum saturation
     comp.setOutputGain(0.0f);
-    comp.setOverEasy(false);
+    comp.setSoftKnee(false);
     comp.setMix(100.0f);
 
     const double fundamental = 10000.0;

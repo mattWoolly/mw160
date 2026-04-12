@@ -78,7 +78,7 @@ TEST_CASE("Factory presets: spot-check Kick Punch values", "[presets]")
     CHECK(p.threshold == -10.0f);
     CHECK(p.ratio == 4.0f);
     CHECK(p.outputGain == 4.0f);
-    CHECK(p.overEasy == false);
+    CHECK(p.softKnee == false);
     CHECK(p.stereoLink == true);
     CHECK(p.mix == 100.0f);
 }
@@ -89,7 +89,7 @@ TEST_CASE("Factory presets: spot-check Parallel Smash values", "[presets]")
     REQUIRE(std::string(p.name) == "Parallel Smash");
     CHECK(p.ratio == 8.0f);
     CHECK(p.mix == 50.0f);
-    CHECK(p.overEasy == false);
+    CHECK(p.softKnee == false);
 }
 
 TEST_CASE("Factory presets: spot-check Brick Wall values", "[presets]")
@@ -97,5 +97,5 @@ TEST_CASE("Factory presets: spot-check Brick Wall values", "[presets]")
     const auto& p = mw160::kFactoryPresets[6];
     REQUIRE(std::string(p.name) == "Brick Wall");
     CHECK(p.ratio == 60.0f);
-    CHECK(p.overEasy == false);
+    CHECK(p.softKnee == false);
 }

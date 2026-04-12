@@ -5,7 +5,7 @@
 
 namespace mw160 {
 
-/// Program-dependent attack/release ballistics for the DBX 160 compression pipeline.
+/// Program-dependent attack/release ballistics for the classic VCA compression pipeline.
 /// Smooths gain reduction values with program-dependent attack (faster for larger
 /// transients) and constant-rate release (~125 dB/sec).
 ///
@@ -34,7 +34,7 @@ private:
     // raised to kAttackExponent to produce program-dependent behavior.
     // Larger transients see a shorter effective time constant, yielding
     // faster attack. The exponent > 1.0 strengthens the program-dependent
-    // scaling to match published DBX 160 specs:
+    // scaling to match published reference specs:
     //   10 dB GR → ~15 ms, 20 dB GR → ~5 ms, 30 dB GR → ~3 ms
     static constexpr double kBaseAttackTime_s = 0.025;
     static constexpr double kAttackExponent = 1.55;

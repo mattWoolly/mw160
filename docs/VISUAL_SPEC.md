@@ -26,7 +26,7 @@ must enforce them in every artifact:
   in source comments, in asset filenames, in preset names, or in
   tooltips is **`mw160`**.
 - No manufacturer names, model numbers, or trademarked feature names —
-  not even as legacy comments. The existing string `OverEasy` in
+  not even as legacy comments. Any brand-adjacent string in
   `src/PluginEditor.h` and `src/PluginEditor.cpp` is a violation and
   must be removed in the impl pass. The control is **`KNEE`** with
   states **HARD** and **SOFT**.
@@ -778,8 +778,7 @@ The impl agent MUST NOT include any of the following in the editor:
 
 - Any manufacturer name, product name, or model number, in any
   language, in any visual element, source comment, or string literal.
-- Any trademarked feature name, including but not limited to the legacy
-  `OverEasy` string in the existing source. The control is `KNEE` with
+- Any trademarked feature name. The soft knee control is `KNEE` with
   states `HARD` and `SOFT`.
 - Any "feature pill" or callout that quotes a hardware manual.
 - Any serial-number plate, UL plate, FCC ID, "Made in" engraving, or
@@ -806,7 +805,7 @@ The impl agent MUST NOT include any of the following in the editor:
 
 ### 14.1 Files the impl agent will touch
 
-- `src/PluginEditor.h` — strip legacy comments and `OverEasy` string;
+- `src/PluginEditor.h` — strip legacy comments and brand-adjacent strings;
   rename toggle button to `kneeButton`; add `bypassButton`,
   `meterModeButton`; add `Fonts` include.
 - `src/PluginEditor.cpp` — full rewrite of `paint()` and `resized()`
@@ -830,11 +829,10 @@ The impl agent MUST NOT include any of the following in the editor:
 - `src/dsp/*` — no DSP changes.
 - `src/PresetManager.*` — no preset format changes.
 - The APVTS parameter IDs — `threshold`, `ratio`, `outputGain`, `mix`,
-  `overEasy`, `stereoLink`, `bypass`. The parameter ID `overEasy` stays
-  as-is in the APVTS for backward state compatibility — only the *UI
-  label* changes to `KNEE / HARD / SOFT`. The impl agent must add a
-  source comment at the APVTS parameter declaration explaining why the
-  ID and the label diverge.
+  `softKnee`, `stereoLink`, `bypass`. The parameter ID uses neutral
+  vocabulary in the APVTS; the *UI label* is `KNEE / HARD / SOFT`. The
+  impl agent must add a source comment at the APVTS parameter declaration
+  explaining why the ID and the label diverge.
 
 ### 14.3 Verification checklist for the impl agent
 

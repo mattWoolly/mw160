@@ -9,11 +9,11 @@
 
 | Path | Purpose |
 |---|---|
-| `src/PluginEditor.h` | Rewrote header for new layout: KNEE/STEREO LINK/BYPASS buttons, MeterModeButton, knob value/unit labels, aspect constrainer, 28/28/20 meter segment counts. Removed legacy `OverEasy` button identifier. |
-| `src/PluginEditor.cpp` | Full rewrite of `paint()` and `resized()` for the 900x360 1U-inspired layout. New header with brushed-metal gradient + engraved "mw160" wordmark + "VCA COMPRESSOR" sublabel + four procedural screws + threshold BELOW/ABOVE LEDs. Meter panel, knob row panel, switch cluster panel, footer gradient. Meter ticks drawn to the side of each ladder per §6.4. APVTS attachments use the unchanged `"overEasy"` ID but the UI carries KNEE/HARD/SOFT. Focus order per §11.4. Aspect-locked resize 720x288..1440x576. |
+| `src/PluginEditor.h` | Rewrote header for new layout: KNEE/STEREO LINK/BYPASS buttons, MeterModeButton, knob value/unit labels, aspect constrainer, 28/28/20 meter segment counts. Removed legacy soft knee button identifier. |
+| `src/PluginEditor.cpp` | Full rewrite of `paint()` and `resized()` for the 900x360 1U-inspired layout. New header with brushed-metal gradient + engraved "mw160" wordmark + "VCA COMPRESSOR" sublabel + four procedural screws + threshold BELOW/ABOVE LEDs. Meter panel, knob row panel, switch cluster panel, footer gradient. Meter ticks drawn to the side of each ladder per §6.4. APVTS attachments use the `"softKnee"` ID and the UI carries KNEE/HARD/SOFT. Focus order per §11.4. Aspect-locked resize 720x288..1440x576. |
 | `src/gui/CustomLookAndFeel.h` | Rewrote palette wiring to reference `mw160::Palette`. Rewrote `drawRotarySlider` per §5 (9-step layer order, brushed body, outer arc track+fill, LED tip dot, hover/active overlays, bypass-aware arc color). Rewrote `drawToggleButton` as the pill-with-embedded-LED idiom from §7. Added alert-window theming per §8.4. Added font hooks (`getPopupMenuFont`, `getComboBoxFont`, `getTextButtonFont`). |
 | `src/gui/LedMeter.h` | Bumped segment counts to 28 (IN/OUT) / 20 (GR) per §6.2. Replaced inline colors with palette roles. Added recessed background panel, per-segment halo glow, amber/red split in the GR ladder at -6 dB, unlit dark + hairline stroke. |
-| `src/PluginProcessor.cpp` | Added the explanatory comment at the `overEasy` parameter declaration required by VISUAL_SPEC.md §14.2 ("the impl agent must add a source comment at the APVTS parameter declaration explaining why the ID and the label diverge"). No parameter IDs, ranges, or display names changed. |
+| `src/PluginProcessor.cpp` | Added the explanatory comment at the `softKnee` parameter declaration required by VISUAL_SPEC.md §14.2 ("the impl agent must add a source comment at the APVTS parameter declaration explaining why the ID and the label diverge"). No parameter IDs, ranges, or display names changed. |
 
 ## New files
 
@@ -101,10 +101,10 @@ Mitigation: I performed a careful manual audit of every new/changed symbol again
 ### DESIGN-IMPL-007: Trademark scrub of src/dsp left for QA-TM-001
 **Severity:** HIGH (but out of this agent's scope)
 **Owner:** owner:qa-agent (tracked under QA-TM-001)
-**Context:** Grep confirmed that `src/dsp/*`, `src/FactoryPresets.h`, `src/PresetManager.cpp`, `src/PluginProcessor.h`, `src/dsp/Compressor.*`, `src/dsp/Ballistics.*`, `src/dsp/GainComputer.*`, and `src/dsp/RmsDetector.h` still carry manufacturer / product / "OverEasy" references in comments and in one member name (`setOverEasy`). The orchestrator instructions explicitly told me to leave pre-existing brand references in files I touch alone (they are tracked under QA-TM-001), and to not touch `src/dsp/*` at all. The editor-side surface is clean.
+**Context:** Grep confirmed that `src/dsp/*`, `src/FactoryPresets.h`, `src/PresetManager.cpp`, `src/PluginProcessor.h`, `src/dsp/Compressor.*`, `src/dsp/Ballistics.*`, `src/dsp/GainComputer.*`, and `src/dsp/RmsDetector.h` still carried manufacturer / product / brand-adjacent references in comments and in one member name (`setSoftKnee`, renamed from the legacy brand-adjacent form). The orchestrator instructions explicitly told me to leave pre-existing brand references in files I touch alone (they are tracked under QA-TM-001), and to not touch `src/dsp/*` at all. The editor-side surface is clean.
 **Expected:** Zero brand references anywhere in the repo.
-**Actual:** Editor layer clean; DSP layer and processor/preset layer carry legacy references.
-**Location:** `src/dsp/*`, `src/PluginProcessor.cpp` (pre-existing "OverEasy" display-name literal), `src/FactoryPresets.h`, `src/PresetManager.cpp`.
+**Actual:** Editor layer clean; DSP layer and processor/preset layer carried legacy references.
+**Location:** `src/dsp/*`, `src/PluginProcessor.cpp` (pre-existing brand-adjacent display-name literal), `src/FactoryPresets.h`, `src/PresetManager.cpp`.
 
 ## Deviations from the spec
 
@@ -116,7 +116,7 @@ Mitigation: I performed a careful manual audit of every new/changed symbol again
 
 - `src/dsp/*`: untouched.
 - `src/PluginProcessor.h`: untouched.
-- `src/PluginProcessor.cpp`: touched only to add a source comment at the `overEasy` parameter declaration, as required by VISUAL_SPEC.md §14.2. No parameter IDs, ranges, display names, or processing logic changed.
+- `src/PluginProcessor.cpp`: touched only to add a source comment at the `softKnee` parameter declaration, as required by VISUAL_SPEC.md §14.2. No parameter IDs, ranges, display names, or processing logic changed.
 - `src/PresetManager.{h,cpp}`, `src/FactoryPresets.h`: untouched.
 - `tests/`, `.github/workflows/`, `docs/BACKLOG.md`: untouched.
 - `CMakeLists.txt`: untouched. No new source files were added to the target because the new files under `src/gui/*` are all header-only (`Palette.h`, `Fonts.h`, `Geometry.h`, `Screws.h`, `MeterModeButton.h`, updated `CustomLookAndFeel.h`, updated `LedMeter.h`). They compile into `PluginEditor.cpp` via include.

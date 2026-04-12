@@ -5,7 +5,7 @@
 namespace mw160 {
 
 /// Exponentially-weighted RMS level detector.
-/// Models the DBX 160's true-RMS detection with a ~20 ms time constant.
+/// Models a classic VCA compressor's true-RMS detection with a ~20 ms time constant.
 /// Pure C++ — no JUCE dependency — no heap allocation on the audio thread.
 class RmsDetector
 {

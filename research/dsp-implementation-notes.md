@@ -46,7 +46,7 @@ Input Buffer
 
 ### Approach: Simplified Gain + Waveshaping
 
-The Blackmer 200 VCA is very clean (< 0.2% THD overall). A full circuit simulation is not necessary for the initial implementation. Recommended approach:
+The discrete VCA gain element is very clean (< 0.2% THD overall). A full circuit simulation is not necessary for the initial implementation. Recommended approach:
 
 1. **Primary gain stage**: Simple multiplication of audio by gain factor in linear domain
 2. **Subtle saturation**: Apply a soft-saturation waveshaper to introduce the even-order harmonic character
@@ -83,7 +83,7 @@ float rmsLevel = std::sqrt(rmsSquared);
 float rmsDB = 20.0f * std::log10(rmsLevel + 1e-30f);  // avoid log(0)
 ```
 
-The RMS averaging coefficient sets the "window" of the detector. For the DBX 160, the detector uses a 22 uF cap with 909K resistor, giving a time constant of:
+The RMS averaging coefficient sets the "window" of the detector. For the classic VCA compressor, the detector uses a 22 uF cap with 909K resistor, giving a time constant of:
 
 ```
 tau = R * C = 909e3 * 22e-6 = ~20 ms
@@ -96,7 +96,7 @@ rmsCoeff = exp(-1.0 / (0.020 * fs))
 
 ### Stereo handling
 
-For stereo operation with linking, sum the squared signals from both channels before RMS computation (True RMS Power Summing, as per the 160A's stereo link behavior).
+For stereo operation with linking, sum the squared signals from both channels before RMS computation (True RMS Power Summing, as per the reference hardware's stereo link behavior).
 
 ---
 
@@ -115,9 +115,9 @@ float computeGainReduction_dB(float inputLevel_dB, float threshold_dB, float rat
 }
 ```
 
-### Soft knee (OverEasy)
+### Soft knee
 
-The OverEasy knee creates a gradual transition zone centered on the threshold. Using the Giannoulis et al. formulation with a knee width `W`:
+The soft knee creates a gradual transition zone centered on the threshold. Using the Giannoulis et al. formulation with a knee width `W`:
 
 ```cpp
 float computeGainReduction_dB(float x_dB, float T, float R, float W) {
@@ -136,7 +136,7 @@ float computeGainReduction_dB(float x_dB, float T, float R, float W) {
 }
 ```
 
-Recommended OverEasy knee width: 6-12 dB (needs A/B testing against hardware recordings).
+Recommended soft knee width: 6-12 dB (needs A/B testing against hardware recordings).
 
 ### Negative ratios (Infinity+)
 
@@ -146,7 +146,7 @@ When ratio < 0 (or expressed as sidechain gain > 1), the same formula works -- t
 
 ## 4. Program-Dependent Attack/Release
 
-This is the most critical element to get right for the DBX 160's character.
+This is the most critical element to get right for the classic VCA compressor's character.
 
 ### Key insight: constant-rate release
 
@@ -222,7 +222,7 @@ The ballistics filter (attack/release) already provides smooth gain reduction ch
 
 ### Recommendation: Optional, start without
 
-The DBX 160's VCA is very clean. For the initial implementation:
+The reference hardware's VCA is very clean. For the initial implementation:
 - **Phase 1**: No oversampling. The gain modulation is smooth (from ballistics) and the VCA saturation is subtle.
 - **Phase 2**: Add optional 2x oversampling if saturation modeling introduces audible aliasing.
 
@@ -329,7 +329,7 @@ private:
 | `threshold` | Threshold | -40 to +20 | 0 | dBu |
 | `ratio` | Compression | 1.0 to 60.0 (60 = infinity, >60 = negative) | 1.0 | :1 |
 | `outputGain` | Output Gain | -20 to +20 | 0 | dB |
-| `overEasy` | OverEasy | on/off | off | -- |
+| `softKnee` | Soft Knee | on/off | off | -- |
 | `stereoLink` | Stereo Link | on/off | on | -- |
 | `mix` | Mix | 0-100 | 100 | % |
 
@@ -345,10 +345,10 @@ private:
 ### Open-source JUCE references
 - **CTAGDRC** (github.com/p-hlp/CTAGDRC) -- Complete feedforward compressor with gain computer, ballistics, look-ahead, crest factor automation. Closest architectural reference.
 - **chowdsp_utils** (github.com/Chowdhury-DSP/chowdsp_utils) -- LevelDetector, GainComputer, MonoCompressor modules, plus WDF library.
-- **Stillwell Audio Major Tom** -- Program-dependent compressor inspired by the DBX 160 (commercial, but documented behavior).
+- **Stillwell Audio Major Tom** -- Program-dependent compressor inspired by classic VCA compressor designs (commercial, but documented behavior).
 
 ### JUCE-specific
 - `AudioProcessorValueTreeState` for thread-safe parameters
 - `dsp::Oversampling<float>` for optional oversampling
 - `SmoothedValue<float>` for parameter interpolation
-- `dsp::BallisticsFilter<float>` as reference (but too simple for DBX 160 behavior)
+- `dsp::BallisticsFilter<float>` as reference (but too simple for classic VCA compressor behavior)

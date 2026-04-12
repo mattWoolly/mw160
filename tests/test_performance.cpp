@@ -37,7 +37,7 @@ struct PerfResult
 // and measure wall-clock time. Runs multiple iterations for stability.
 static PerfResult measureStereoThroughput(double sampleRate, int blockSize,
                                           double audioDurationSec,
-                                          bool overEasy, bool stereoLink,
+                                          bool softKnee, bool stereoLink,
                                           int iterations = 5)
 {
     const int totalSamples = static_cast<int>(sampleRate * audioDurationSec);
@@ -54,13 +54,13 @@ static PerfResult measureStereoThroughput(double sampleRate, int blockSize,
     compL.setThreshold(-20.0f);
     compL.setRatio(4.0f);
     compL.setOutputGain(0.0f);
-    compL.setOverEasy(overEasy);
+    compL.setSoftKnee(softKnee);
     compL.setMix(100.0f);
 
     compR.setThreshold(-20.0f);
     compR.setRatio(4.0f);
     compR.setOutputGain(0.0f);
-    compR.setOverEasy(overEasy);
+    compR.setSoftKnee(softKnee);
     compR.setMix(100.0f);
 
     // Pre-warm: process 100ms to settle detector state
@@ -93,12 +93,12 @@ static PerfResult measureStereoThroughput(double sampleRate, int blockSize,
         compL.setThreshold(-20.0f);
         compL.setRatio(4.0f);
         compL.setOutputGain(0.0f);
-        compL.setOverEasy(overEasy);
+        compL.setSoftKnee(softKnee);
         compL.setMix(100.0f);
         compR.setThreshold(-20.0f);
         compR.setRatio(4.0f);
         compR.setOutputGain(0.0f);
-        compR.setOverEasy(overEasy);
+        compR.setSoftKnee(softKnee);
         compR.setMix(100.0f);
 
         // Make working copies so each iteration processes same data
@@ -148,7 +148,7 @@ TEST_CASE("Performance: stereo throughput at 44.1 kHz, hard knee",
 {
     const auto result = measureStereoThroughput(
         44100.0, 512, /*audioDurationSec=*/2.0,
-        /*overEasy=*/false, /*stereoLink=*/true);
+        /*softKnee=*/false, /*stereoLink=*/true);
 
     std::printf("\n  [44.1 kHz, hard knee, stereo-linked]\n");
     std::printf("    Wall time:    %.2f ms for %.0f ms audio\n",
@@ -160,14 +160,14 @@ TEST_CASE("Performance: stereo throughput at 44.1 kHz, hard knee",
     REQUIRE(result.cpuPercent < 5.0);
 }
 
-TEST_CASE("Performance: stereo throughput at 44.1 kHz, OverEasy",
+TEST_CASE("Performance: stereo throughput at 44.1 kHz, soft knee",
           "[performance][benchmark]")
 {
     const auto result = measureStereoThroughput(
         44100.0, 512, /*audioDurationSec=*/2.0,
-        /*overEasy=*/true, /*stereoLink=*/true);
+        /*softKnee=*/true, /*stereoLink=*/true);
 
-    std::printf("\n  [44.1 kHz, OverEasy, stereo-linked]\n");
+    std::printf("\n  [44.1 kHz, soft knee, stereo-linked]\n");
     std::printf("    Wall time:    %.2f ms for %.0f ms audio\n",
                 result.wallTimeMs, result.audioLengthMs);
     std::printf("    Real-time:    %.1fx\n", result.realtimeMultiple);
@@ -181,7 +181,7 @@ TEST_CASE("Performance: stereo throughput at 96 kHz, hard knee",
 {
     const auto result = measureStereoThroughput(
         96000.0, 512, /*audioDurationSec=*/2.0,
-        /*overEasy=*/false, /*stereoLink=*/true);
+        /*softKnee=*/false, /*stereoLink=*/true);
 
     std::printf("\n  [96 kHz, hard knee, stereo-linked]\n");
     std::printf("    Wall time:    %.2f ms for %.0f ms audio\n",
@@ -193,14 +193,14 @@ TEST_CASE("Performance: stereo throughput at 96 kHz, hard knee",
     REQUIRE(result.cpuPercent < 11.0);
 }
 
-TEST_CASE("Performance: stereo throughput at 96 kHz, OverEasy",
+TEST_CASE("Performance: stereo throughput at 96 kHz, soft knee",
           "[performance][benchmark]")
 {
     const auto result = measureStereoThroughput(
         96000.0, 512, /*audioDurationSec=*/2.0,
-        /*overEasy=*/true, /*stereoLink=*/true);
+        /*softKnee=*/true, /*stereoLink=*/true);
 
-    std::printf("\n  [96 kHz, OverEasy, stereo-linked]\n");
+    std::printf("\n  [96 kHz, soft knee, stereo-linked]\n");
     std::printf("    Wall time:    %.2f ms for %.0f ms audio\n",
                 result.wallTimeMs, result.audioLengthMs);
     std::printf("    Real-time:    %.1fx\n", result.realtimeMultiple);
@@ -214,7 +214,7 @@ TEST_CASE("Performance: independent channel mode throughput at 44.1 kHz",
 {
     const auto result = measureStereoThroughput(
         44100.0, 512, /*audioDurationSec=*/2.0,
-        /*overEasy=*/false, /*stereoLink=*/false);
+        /*softKnee=*/false, /*stereoLink=*/false);
 
     std::printf("\n  [44.1 kHz, hard knee, independent channels]\n");
     std::printf("    Wall time:    %.2f ms for %.0f ms audio\n",
