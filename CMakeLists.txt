@@ -98,6 +98,7 @@ add_executable(MW160Tests
     tests/test_plugin_processor_state.cpp
     tests/test_plugin_parameter_display_names.cpp
     tests/test_plugin_parameter_labels.cpp
+    tests/test_parameter_smoother_block_independence.cpp
 )
 
 target_link_libraries(MW160Tests

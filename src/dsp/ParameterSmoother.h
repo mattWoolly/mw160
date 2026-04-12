@@ -34,7 +34,11 @@ public:
     /// Set a new target. The smoother will ramp from the current value.
     void setTarget(float newTarget)
     {
-        if (newTarget == target_ && countdown_ == 0)
+        // Bit-exact comparison is intentional: this is an idempotency guard
+        // asking "is the requested target literally the same float I already
+        // stored?" — not a magnitude comparison.  The -Wfloat-equal warning
+        // is a false positive here.
+        if (newTarget == target_) // NOLINT(clang-diagnostic-float-equal)
             return;
 
         target_ = newTarget;
