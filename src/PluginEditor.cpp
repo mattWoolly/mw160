@@ -75,7 +75,7 @@ namespace
         label.setText(text, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
         label.setFont(mw160::Fonts::interRegular(9.0f));
-        label.setColour(juce::Label::textColourId, mw160::Palette::textDim);
+        label.setColour(juce::Label::textColourId, mw160::Palette::textMid);
         parent.addAndMakeVisible(label);
     }
 
@@ -182,15 +182,15 @@ MW160Editor::MW160Editor(MW160Processor& p)
     addAndMakeVisible(kneeButton);
 
     stereoLinkButton.setClickingTogglesState(true);
-    stereoLinkButton.getProperties().set("offLabel", "LINK OFF");
-    stereoLinkButton.getProperties().set("onLabel",  "LINK ON");
+    stereoLinkButton.getProperties().set("offLabel", "OFF");
+    stereoLinkButton.getProperties().set("onLabel",  "ON");
     stereoLinkButton.setTitle("Stereo Link");
     stereoLinkButton.setHelpText("Link detector across channels");
     addAndMakeVisible(stereoLinkButton);
 
     bypassButton.setClickingTogglesState(true);
-    bypassButton.getProperties().set("offLabel",    "ACTIVE");
-    bypassButton.getProperties().set("onLabel",     "BYPASS");
+    bypassButton.getProperties().set("offLabel",    "OFF");
+    bypassButton.getProperties().set("onLabel",     "ON");
     bypassButton.getProperties().set("bypassStyle", true);
     bypassButton.setTitle("Bypass");
     bypassButton.setHelpText("Bypass the compressor");
@@ -199,11 +199,11 @@ MW160Editor::MW160Editor(MW160Processor& p)
     addAndMakeVisible(meterModeButton);
     meterModeButton.onModeChange = [this](MeterModeButton::Mode)
     {
-        // Only repaint the meter label row; the ladders themselves don't
-        // change drawing based on mode in the 3-meter variant.
+        // Repaint the meter label row and the tick columns (§6.6).
         inputMeterLabel.repaint();
         outputMeterLabel.repaint();
         grMeterLabel.repaint();
+        repaint();
         // Update brightness.
         auto apply = [](juce::Label& L, bool bright)
         {
@@ -616,7 +616,8 @@ void MW160Editor::paint(juce::Graphics& g)
         g.setColour(bgDeep);
         g.fillRoundedRectangle(strip, 4.0f);
         g.setColour(borderHairline);
-        g.drawRoundedRectangle(strip.reduced(0.5f), 4.0f, 1.0f);
+        g.drawRoundedRectangle(strip.reduced(0.5f), 4.0f,
+                               mw160::Geometry::snap1px(1.0f, sx));
     }
 
     // --- Knob row panel (VISUAL_SPEC.md §2.3) ---
@@ -625,7 +626,8 @@ void MW160Editor::paint(juce::Graphics& g)
         g.setColour(surfaceLow);
         g.fillRoundedRectangle(panel, 4.0f);
         g.setColour(borderHairline);
-        g.drawRoundedRectangle(panel.reduced(0.5f), 4.0f, 1.0f);
+        g.drawRoundedRectangle(panel.reduced(0.5f), 4.0f,
+                               mw160::Geometry::snap1px(1.0f, sx));
     }
 
     // --- Switch cluster panel (VISUAL_SPEC.md §2.4) ---
@@ -634,14 +636,20 @@ void MW160Editor::paint(juce::Graphics& g)
         g.setColour(surfaceLow);
         g.fillRoundedRectangle(panel, 4.0f);
         g.setColour(borderHairline);
-        g.drawRoundedRectangle(panel.reduced(0.5f), 4.0f, 1.0f);
+        g.drawRoundedRectangle(panel.reduced(0.5f), 4.0f,
+                               mw160::Geometry::snap1px(1.0f, sx));
     }
 
-    // --- Meter scale tick labels (VISUAL_SPEC.md §6.4) ---
+    // --- Meter scale tick labels (VISUAL_SPEC.md §6.4 / §6.6) ---
     {
         const auto tickFont = mw160::Fonts::interRegular(8.0f * juce::jmin(sx, sy));
         g.setFont(tickFont);
-        g.setColour(textDim);
+
+        // §6.6: the selected mode's tick column is textBright; others textDim.
+        const auto mode = meterModeButton.getMode();
+        const bool inOutBright = (mode == MeterModeButton::Mode::In
+                               || mode == MeterModeButton::Mode::Out);
+        const bool grBright    = (mode == MeterModeButton::Mode::Gr);
 
         // Shared IN/OUT tick column between the two ladders.
         struct Tick { float ref_dB; const char* label; };
@@ -658,7 +666,8 @@ void MW160Editor::paint(juce::Graphics& g)
             return y0 + yH * (1.0f - t);
         };
         const float shared_x = 54.0f * sx;
-        const float shared_w = 8.0f  * sx;
+        const float shared_w = 16.0f * sx;
+        g.setColour(inOutBright ? textBright : textDim);
         for (const auto& tk : inOutTicks)
         {
             const float yy = inOutY(tk.ref_dB);
@@ -681,6 +690,7 @@ void MW160Editor::paint(juce::Graphics& g)
         };
         const float gr_x = 144.0f * sx;
         const float gr_w = 16.0f  * sx;
+        g.setColour(grBright ? textBright : textDim);
         for (const auto& tk : grTicks)
         {
             const float yy = grY(tk.ref_dB);
@@ -735,15 +745,18 @@ void MW160Editor::resized()
     placeKnob(mixSlider,        mixLabel,        mixValue,        mixUnit,        574);
 
     // --- Switch cluster (§2.4) ---
-    kneeButton      .setBounds(scaleI(736,  92, 140, 36, W, H));
-    stereoLinkButton.setBounds(scaleI(736, 136, 140, 36, W, H));
-    bypassButton    .setBounds(scaleI(736, 180, 140, 36, W, H));
-    meterModeButton .setBounds(scaleI(736, 232, 140, 36, W, H));
+    // Visual pill stays 36 px tall; the component is 44 px for WCAG 2.1
+    // hit-target compliance (§11.1). The LookAndFeel centres the pill.
+    kneeButton      .setBounds(scaleI(736,  88, 140, 44, W, H));
+    stereoLinkButton.setBounds(scaleI(736, 132, 140, 44, W, H));
+    bypassButton    .setBounds(scaleI(736, 176, 140, 44, W, H));
+    meterModeButton .setBounds(scaleI(736, 228, 140, 44, W, H));
 
     // --- Footer (§2.5) ---
     presetLabel  .setBounds(scaleI(16,  312,  60, 14, W, H));
     presetBox    .setBounds(scaleI(16,  328, 540, 24, W, H));
-    saveButton   .setBounds(scaleI(564, 328,  64, 24, W, H));
-    deleteButton .setBounds(scaleI(636, 328,  64, 24, W, H));
+    // Preset buttons: 64×36 hit target (§11.1), visual centred by LnF.
+    saveButton   .setBounds(scaleI(564, 322,  64, 36, W, H));
+    deleteButton .setBounds(scaleI(636, 322,  64, 36, W, H));
     versionLabel .setBounds(scaleI(708, 332, 176, 16, W, H));
 }

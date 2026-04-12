@@ -32,7 +32,7 @@ namespace mw160::Palette
     inline const juce::Colour screwSlot        { 0xff0a0a0a };
 
     // --- Knobs ---
-    inline const juce::Colour knobMetalHigh    { 0xff6c6c6c };
+    inline const juce::Colour knobMetalHigh    { 0xff858585 };
     inline const juce::Colour knobMetalLow     { 0xff2c2c2c };
     inline const juce::Colour knobRing         { 0xff1a1a1a };
     inline const juce::Colour knobRingHighlight{ 0xff5a5a5a };

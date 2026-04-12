@@ -185,7 +185,12 @@ public:
     {
         using namespace mw160::Palette;
 
-        auto bounds = button.getLocalBounds().toFloat();
+        // Centre a 36 px pill within the (possibly larger) hit-target bounds
+        // so expanding to 44 px for WCAG compliance (§11.1) doesn't stretch
+        // the visual.
+        auto bounds = button.getLocalBounds().toFloat()
+                          .withSizeKeepingCentre(button.getLocalBounds().toFloat().getWidth(),
+                                                 juce::jmin(button.getLocalBounds().toFloat().getHeight(), 36.0f));
         const float corner = 6.0f;
         const bool  on     = button.getToggleState();
         const bool  isBypassStyle = button.getProperties().getWithDefault("bypassStyle", false);
