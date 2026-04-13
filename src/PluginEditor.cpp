@@ -679,9 +679,12 @@ void MW160Editor::paint(juce::Graphics& g)
             const float yH = 176.0f * sy;
             return y0 + yH * (1.0f - t);
         };
-        const float shared_tickX = 51.0f * sx;  // tick mark start
-        const float shared_x    = 54.0f * sx;  // label start
-        const float shared_w    = 16.0f * sx;
+        // Tick column widened to 16 px (DESIGN-REVIEW-003): outputMeter shifted
+        // to x=70 so the gap between IN right-edge (52) and OUT left-edge (70)
+        // is 18 px, giving the label box enough room for "-48".
+        const float shared_tickX = 51.0f * sx;  // tick mark start (just after IN right edge)
+        const float shared_x    = 52.0f * sx;  // label start
+        const float shared_w    = 18.0f * sx;  // wide enough for "-48"
         const auto  inOutCol    = inOutBright ? textBright : textDim;
         g.setColour(inOutCol);
         for (const auto& tk : inOutTicks)
@@ -744,12 +747,12 @@ void MW160Editor::resized()
     // --- Meter strip: three ladders ---
     // Bounds from VISUAL_SPEC.md §2.2.
     inputMeterLabel .setBounds(scaleI(20,  76, 36, 14, W, H));
-    outputMeterLabel.setBounds(scaleI(60,  76, 36, 14, W, H));
-    grMeterLabel    .setBounds(scaleI(108, 76, 36, 14, W, H));
+    outputMeterLabel.setBounds(scaleI(66,  76, 36, 14, W, H));  // shifted +6 for wider tick column
+    grMeterLabel    .setBounds(scaleI(114, 76, 36, 14, W, H));  // shifted +6
 
     inputMeter .setBounds(scaleI(24,  96, 28, 176, W, H));
-    outputMeter.setBounds(scaleI(64,  96, 28, 176, W, H));
-    grMeter    .setBounds(scaleI(112, 96, 28, 176, W, H));
+    outputMeter.setBounds(scaleI(70,  96, 28, 176, W, H));  // shifted +6; tick column now 18 px
+    grMeter    .setBounds(scaleI(118, 96, 28, 176, W, H));  // shifted +6
 
     // --- Knob row: four columns at 130 px width (§2.3) ---
     auto placeKnob = [&](juce::Slider& s, juce::Label& top,
