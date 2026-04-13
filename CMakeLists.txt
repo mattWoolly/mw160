@@ -35,7 +35,7 @@ target_include_directories(MW160_DSP PUBLIC src)
 
 # Plugin target
 juce_add_plugin(MW160
-    COMPANY_NAME "mwAudio"
+    COMPANY_NAME "MW Audio"
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
@@ -46,7 +46,7 @@ juce_add_plugin(MW160
     PLUGIN_CODE Mw16
     BUNDLE_ID com.mwaudio.mw160
     FORMATS VST3 AU Standalone
-    PRODUCT_NAME "mw160"
+    PRODUCT_NAME "MW160"
 )
 
 # ---------- Embedded font binary data (VISUAL_SPEC.md §4.1) ----------
