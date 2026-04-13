@@ -144,6 +144,8 @@ add_executable(MW160NoAllocTests
 target_link_libraries(MW160NoAllocTests
     PRIVATE
         MW160_DSP
+        MW160
+        juce::juce_audio_processors
         Catch2::Catch2WithMain
 )
 
