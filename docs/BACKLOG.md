@@ -107,7 +107,7 @@
 **Summary:** Create a GitHub Actions workflow that builds the plugin and runs tests on push and PR.
 
 **Scope:**
-- `.github/workflows/build.yml`
+- `.github/workflows/build-and-validate.yml`
 - Matrix: macOS-latest (Xcode/Clang), ubuntu-latest (GCC)
 - Steps: checkout, configure CMake, build, run tests
 - Cache CMake build and JUCE fetch for faster runs
