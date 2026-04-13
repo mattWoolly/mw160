@@ -679,7 +679,7 @@ void MW160Editor::paint(juce::Graphics& g)
             const float yH = 176.0f * sy;
             return y0 + yH * (1.0f - t);
         };
-        // Tick column widened to 16 px (DESIGN-REVIEW-003): outputMeter shifted
+        // Tick column widened to 18 px (DESIGN-REVIEW-003): outputMeter shifted
         // to x=70 so the gap between IN right-edge (52) and OUT left-edge (70)
         // is 18 px, giving the label box enough room for "-48".
         const float shared_tickX = 51.0f * sx;  // tick mark start (just after IN right edge)
@@ -708,9 +708,9 @@ void MW160Editor::paint(juce::Graphics& g)
             const float yH = 176.0f * sy;
             return y0 + yH * t;
         };
-        const float gr_tickX = 140.0f * sx;  // tick mark start (right edge of ladder)
-        const float gr_x    = 144.0f * sx;   // label start
-        const float gr_w    = 16.0f  * sx;
+        const float gr_tickX = 146.0f * sx;  // tick mark start (right edge of grMeter: 118+28=146)
+        const float gr_x    = 150.0f * sx;   // label start
+        const float gr_w    = 14.0f  * sx;   // 14 px sufficient for "-20"; right edge = 164 (panel edge)
         const auto  grCol   = grBright ? textBright : textDim;
         g.setColour(grCol);
         for (const auto& tk : grTicks)
