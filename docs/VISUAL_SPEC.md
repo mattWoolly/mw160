@@ -340,8 +340,10 @@ specific cap.
 ### 5.2 Geometry
 
 - **Diameter:** 96 px at default scale (per §2.3).
-- **Travel angle:** 270° total. Start angle = 7π/6 (≈ −150°), end angle
-  = π/3 + 2π = 7π/3 (≈ +120°), measured clockwise from 12 o'clock.
+- **Travel angle:** 270° total. Start angle = 5π/4 (≈ −135°), end angle
+  = 11π/4 (≈ +135°), measured clockwise from 12 o'clock. These map to
+  `setRotaryParameters(π × 1.25, π × 2.75, true)` in JUCE, giving the
+  7:30 → 4:30 sweep.
 - **Outer ring:** 1.5 px stroke in `knobRing` with a 0.5 px highlight
   edge in `knobRingHighlight` on the top half (use a path for the top
   arc only).
