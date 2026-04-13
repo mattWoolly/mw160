@@ -4,6 +4,8 @@
 #include <cstdlib>
 #include <new>
 #include "dsp/Compressor.h"
+#include "PluginProcessor.h"
+#include <juce_audio_processors/juce_audio_processors.h>
 
 // ---------------------------------------------------------------------------
 // Heap allocation tracking
@@ -178,6 +180,79 @@ TEST_CASE("No-alloc: parameter changes during processing cause no allocations",
                     static_cast<float>(block * 512 + i) * 0.1f);
                 comp.processSample(sample);
             }
+        }
+
+        REQUIRE(tracker.count() == 0);
+    }
+}
+
+TEST_CASE("No-alloc: MW160Processor::processBlock makes zero heap allocations",
+          "[performance][no-alloc][plugin]")
+{
+    // Construct and prepare outside the tracking zone so JUCE internals,
+    // APVTS setup, and any lazy compressor initialisation don't pollute the
+    // allocation count.
+    MW160Processor processor;
+
+    constexpr double kSampleRate = 44100.0;
+    constexpr int    kBlockSize  = 512;
+
+    processor.prepareToPlay(kSampleRate, kBlockSize);
+
+    // Ensure bypass is off — processBlock only heap-allocates the dry-copy
+    // buffer during the ~20 ms bypass crossfade. The active (non-bypass) path
+    // must be alloc-free.
+    auto* bypassParam = processor.apvts.getParameter("bypass");
+    REQUIRE(bypassParam != nullptr);
+    bypassParam->setValueNotifyingHost(0.0f);
+
+    // Build a stereo sine buffer and MIDI buffer outside the fence.
+    juce::AudioBuffer<float> buffer(2, kBlockSize);
+    juce::MidiBuffer         midi;
+
+    {
+        float* dataL = buffer.getWritePointer(0);
+        float* dataR = buffer.getWritePointer(1);
+        for (int i = 0; i < kBlockSize; ++i)
+        {
+            const float sample = 0.3f * std::sin(static_cast<float>(i) * 0.1f);
+            dataL[i] = sample;
+            dataR[i] = sample;
+        }
+    }
+
+    // Pre-warm: run several blocks so ballistics, smoothers, and any lazy
+    // internal state are fully settled before we start counting allocations.
+    for (int b = 0; b < 100; ++b)
+    {
+        float* dataL = buffer.getWritePointer(0);
+        float* dataR = buffer.getWritePointer(1);
+        for (int i = 0; i < kBlockSize; ++i)
+        {
+            const float sample = 0.3f * std::sin(
+                static_cast<float>(b * kBlockSize + i) * 0.1f);
+            dataL[i] = sample;
+            dataR[i] = sample;
+        }
+        processor.processBlock(buffer, midi);
+    }
+
+    // NOW track allocations: call processBlock for 1 second of audio (86 blocks).
+    {
+        AllocationTracker tracker;
+
+        for (int b = 0; b < 86; ++b)
+        {
+            float* dataL = buffer.getWritePointer(0);
+            float* dataR = buffer.getWritePointer(1);
+            for (int i = 0; i < kBlockSize; ++i)
+            {
+                const float sample = 0.3f * std::sin(
+                    static_cast<float>((100 + b) * kBlockSize + i) * 0.1f);
+                dataL[i] = sample;
+                dataR[i] = sample;
+            }
+            processor.processBlock(buffer, midi);
         }
 
         REQUIRE(tracker.count() == 0);
