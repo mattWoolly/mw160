@@ -152,31 +152,23 @@ pluginval --validate build/MW160_artefacts/Release/VST3/MW160.vst3 \
 ### Signal Flow
 
 ```
-Input ──┬──────────────────────────────────────────────┐
-        │                                              │ (dry, for mix)
-        ▼                                              │
-   ┌─────────┐    ┌──────────┐    ┌───────────┐       │
-   ���  Gain   │◄───│Ballistics│◄───│True-RMS   │◄──┐   │
-   │Computer │    │(program- │    │Detector   │   │   │
-   │(soft/   │    │dependent)│    │(~20 ms)   │   │   │
-   │hard knee)│    └──────────┘    └───────────┘   │   │
-   └��───┬────┘                                     │   │
-        │ gain reduction (dB)                      │   │
-        ▼                                          │   │
-   ┌─────────┐    ┌───────────┐                    │   │
-   │  VCA    │───▶│  Makeup   │───────────────┐    │   │
-   │  (apply │    │  Gain     │               │    │   │
-   │  GR +   │    └───────────┘               │    │   │
-   │saturate)│                                │    │   │
-   └──────���──┘                                │    │   │
-        │                                     ▼    │   │
-        └──── feedback path ──────────────▶ Output │   │
-                                              │    │   │
-                                              │    │   │
-                                   ┌──────────┴────┘   │
-                                   │   Mix (dry/wet)◄──┘
-                                   ▼
-                                 Final Output
+                          Feedback Path
+                   .─────────────────────────────────.
+                   |                                  |
+Input ─────┬───────|──> VCA ──> Saturation ──> Makeup Gain ──┬──> Mix ──> Output
+           |       |    (apply GR)              (post-VCA)   |    (dry/wet)
+           |       |                                         |       ^
+           |       '── RMS Detector ──> Gain Computer ───────'       |
+      (dry copy)       (~20 ms)         (soft/hard knee)             |
+           |                                                         |
+           |              ^                                          |
+           |              |                                          |
+           |          Ballistics                                     |
+           |          (program-dependent                             |
+           |           attack/release)                               |
+           |                                                         |
+           '─────────────────────────────────────────────────────────'
+                              (parallel mix)
 ```
 
 The feedback loop is the defining characteristic: the detector reads the compressor's own output (delayed by one sample), creating a self-regulating servo that naturally adapts to program material.
