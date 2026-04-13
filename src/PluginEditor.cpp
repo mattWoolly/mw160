@@ -559,7 +559,7 @@ void MW160Editor::paint(juce::Graphics& g)
         }
     }
 
-    // --- Wordmark "mw160" ---
+    // --- Vendor + wordmark "mwAudio  mw160" ---
     // §4.3 requires a two-pass draw for the engraved look.
     {
         auto wordmarkArea = juce::Rectangle<float>(64.0f * sx, 6.0f * sy, 360.0f * sx, 34.0f * sy);
@@ -567,10 +567,10 @@ void MW160Editor::paint(juce::Graphics& g)
 
         g.setFont(wordFont);
         g.setColour(juce::Colours::white.withAlpha(0.12f));
-        g.drawText("mw160", wordmarkArea.translated(0.0f, 1.0f),
+        g.drawText("mwAudio  mw160", wordmarkArea.translated(0.0f, 1.0f),
                    juce::Justification::centredLeft);
         g.setColour(textInk);
-        g.drawText("mw160", wordmarkArea, juce::Justification::centredLeft);
+        g.drawText("mwAudio  mw160", wordmarkArea, juce::Justification::centredLeft);
 
         // Sublabel "VCA COMPRESSOR" — placed below the 34 px wordmark box
         // with an explicit gap to avoid overlap (DESIGN-REVIEW-002).
