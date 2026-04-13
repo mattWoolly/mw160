@@ -81,7 +81,7 @@ The following tests require manual verification in actual DAW hosts. This should
 - [ ] Preset save/load works
 - [ ] Bypass works
 - [ ] Stereo and mono configurations
-- [ ] AUVal passes: `auval -v aufx Mw16 MwAu`
+- [ ] AUVal passes: `auval -v aufx mw16 mwAu`
 
 ### Ableton Live (VST3/AU) -- macOS / Windows
 

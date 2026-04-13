@@ -5,7 +5,7 @@ namespace
 juce::File defaultPresetDirectory()
 {
     return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-               .getChildFile("MW Audio")
+               .getChildFile("mw Audio")
                .getChildFile("MW160")
                .getChildFile("Presets");
 }

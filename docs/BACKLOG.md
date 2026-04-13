@@ -34,7 +34,7 @@
 - Define plugin target using `juce_add_plugin()` with:
   - Plugin name: MW160
   - Formats: VST3, AU, Standalone
-  - Company: MW Audio (or placeholder)
+  - Company: mw Audio (or placeholder)
   - Plugin code / manufacturer code placeholders
 - Create `src/` directory with placeholder `PluginProcessor.h`, `PluginProcessor.cpp`, `PluginEditor.h`, `PluginEditor.cpp`
 - Verify the project configures and builds successfully on macOS and Linux
@@ -806,7 +806,7 @@ files returned **175 occurrences across 33 files**.
   parameter ID and brand-adjacent test names.
 - `.github` / CI is clean.
 - `CMakeLists.txt` is clean (company name already neutralized to
-  "MW Audio", product name to "MW160").
+  "mw Audio", product name to "MW160").
 
 **Parameter ID migration hazard.** The JUCE APVTS legacy parameter ID
 was persisted inside user preset files and saved DAW sessions. The
