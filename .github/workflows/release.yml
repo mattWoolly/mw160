@@ -1,0 +1,234 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  BUILD_TYPE: Release
+  PLUGINVAL_VERSION: v1.0.4
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux
+            pluginval_asset: pluginval_Linux.zip
+          - os: macos-14
+            name: macos
+            pluginval_asset: pluginval_macOS.zip
+          - os: windows-latest
+            name: windows
+            pluginval_asset: pluginval_Windows.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------- System dependencies ----------------
+
+      - name: Install Linux dependencies
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libasound2-dev \
+            libjack-jackd2-dev \
+            ladspa-sdk \
+            libfreetype-dev \
+            libx11-dev \
+            libxcomposite-dev \
+            libxcursor-dev \
+            libxext-dev \
+            libxinerama-dev \
+            libxrandr-dev \
+            libxrender-dev \
+            libglu1-mesa-dev \
+            mesa-common-dev \
+            xvfb
+
+      # ---------------- Dependency cache ----------------
+
+      - name: Cache FetchContent dependencies
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-${{ matrix.name }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: |
+            deps-${{ matrix.name }}-
+
+      # ---------------- Configure ----------------
+
+      - name: Configure (Linux / Windows)
+        if: matrix.name != 'macos'
+        shell: bash
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Configure (macOS universal)
+        if: matrix.name == 'macos'
+        shell: bash
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      # ---------------- Build ----------------
+
+      - name: Build all plugin formats and tests
+        shell: bash
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --target MW160_All MW160Tests MW160NoAllocTests --parallel
+
+      # ---------------- Unit tests ----------------
+
+      - name: Run Catch2 tests
+        shell: bash
+        run: ctest --test-dir build --output-on-failure -C ${{ env.BUILD_TYPE }}
+
+      # ---------------- pluginval ----------------
+
+      - name: Download pluginval (Linux / macOS)
+        if: matrix.name != 'windows'
+        shell: bash
+        run: |
+          curl -sL -o pluginval.zip \
+            "https://github.com/Tracktion/pluginval/releases/download/${{ env.PLUGINVAL_VERSION }}/${{ matrix.pluginval_asset }}"
+          unzip -o pluginval.zip -d build
+          if [ "${{ matrix.name }}" = "linux" ]; then
+            chmod +x build/pluginval
+          fi
+
+      - name: Download pluginval (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest `
+            -Uri "https://github.com/Tracktion/pluginval/releases/download/${{ env.PLUGINVAL_VERSION }}/${{ matrix.pluginval_asset }}" `
+            -OutFile pluginval.zip
+          Expand-Archive -Path pluginval.zip -DestinationPath build -Force
+
+      - name: Locate VST3 artifact (Linux / macOS)
+        if: matrix.name != 'windows'
+        shell: bash
+        run: |
+          VST3_PATH="build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3"
+          if [ ! -e "$VST3_PATH" ]; then
+            VST3_PATH="build/MW160_artefacts/VST3/MW160.vst3"
+          fi
+          if [ ! -e "$VST3_PATH" ]; then
+            echo "::error::VST3 artifact not found at expected paths"
+            find build/MW160_artefacts -name "MW160.vst3" -print || true
+            exit 1
+          fi
+          echo "VST3_PATH=$VST3_PATH" >> "$GITHUB_ENV"
+
+      - name: Locate VST3 artifact (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $p = "build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3"
+          if (-not (Test-Path $p)) { $p = "build/MW160_artefacts/VST3/MW160.vst3" }
+          if (-not (Test-Path $p)) {
+            Write-Host "::error::VST3 artifact not found at expected paths"
+            Get-ChildItem -Recurse -Filter "MW160.vst3" build/MW160_artefacts
+            exit 1
+          }
+          "VST3_PATH=$p" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Validate VST3 with pluginval (Linux)
+        if: matrix.name == 'linux'
+        run: |
+          xvfb-run -a build/pluginval \
+            --validate-in-process \
+            --strictness-level 10 \
+            --validate "$VST3_PATH"
+
+      - name: Validate VST3 with pluginval (macOS)
+        if: matrix.name == 'macos'
+        run: |
+          build/pluginval.app/Contents/MacOS/pluginval \
+            --validate-in-process \
+            --strictness-level 10 \
+            --validate "$VST3_PATH"
+
+      - name: Validate VST3 with pluginval (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          build/pluginval.exe `
+            --validate-in-process `
+            --strictness-level 10 `
+            --validate $env:VST3_PATH
+
+      # ---------------- Package ----------------
+
+      - name: Package artifacts (Linux)
+        if: matrix.name == 'linux'
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          tar -czf "mw160-${TAG}-linux-vst3.tar.gz" \
+            -C "build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3" MW160.vst3
+          tar -czf "mw160-${TAG}-linux-standalone.tar.gz" \
+            -C "build/MW160_artefacts/${{ env.BUILD_TYPE }}/Standalone" .
+
+      - name: Package artifacts (macOS)
+        if: matrix.name == 'macos'
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          zip -r "mw160-${TAG}-macos-vst3.zip" \
+            -j "build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3" || \
+          (cd "build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3" && zip -r "../../../../mw160-${TAG}-macos-vst3.zip" MW160.vst3)
+          cd "build/MW160_artefacts/${{ env.BUILD_TYPE }}/AU" && zip -r "../../../../mw160-${TAG}-macos-au.zip" MW160.component
+          cd ../../../..
+          cd "build/MW160_artefacts/${{ env.BUILD_TYPE }}/Standalone" && zip -r "../../../../mw160-${TAG}-macos-standalone.zip" .
+
+      - name: Package artifacts (Windows)
+        if: matrix.name == 'windows'
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          Compress-Archive -Path "build/MW160_artefacts/${{ env.BUILD_TYPE }}/VST3/MW160.vst3" `
+            -DestinationPath "mw160-${tag}-windows-vst3.zip"
+          Compress-Archive -Path "build/MW160_artefacts/${{ env.BUILD_TYPE }}/Standalone/*" `
+            -DestinationPath "mw160-${tag}-windows-standalone.zip"
+
+      # ---------------- Upload to job artifacts ----------------
+
+      - name: Upload release packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: mw160-*
+          retention-days: 1
+
+  # ---------------- Create GitHub Release ----------------
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all release packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+
+      - name: List release assets
+        run: ls -la mw160-*
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: mw160-*
+          fail_on_unmatched_files: true

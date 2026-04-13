@@ -218,6 +218,17 @@ GitHub Actions runs on every push and pull request:
 
 All three platforms must pass before merge.
 
+### Releases
+
+Pushing a version tag triggers a release build across all platforms. If all tests and pluginval validation pass, packaged binaries are uploaded to a GitHub Release automatically.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Download pre-built binaries from the [Releases](../../releases) page.
+
 ## Acknowledgments
 
 - Built with [JUCE 7](https://juce.com/) (GPLv3 / commercial license)
